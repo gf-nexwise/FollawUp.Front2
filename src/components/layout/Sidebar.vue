@@ -101,7 +101,7 @@ onMounted(() => {
   position: fixed;
   left: 0;
   top: 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   display: flex;
   flex-direction: column;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
@@ -125,7 +125,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  transition: all 0.3s ease;
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   justify-content: flex-start;
   padding: 0.5rem 1rem;
 }
@@ -159,7 +159,7 @@ onMounted(() => {
   font-weight: 500;
   color: var(--gray-900);
   white-space: nowrap;
-  transition: all 0.3s ease;
+  transition: all 0.5s ease;
 }
 
 .logo-text strong {
@@ -197,7 +197,7 @@ onMounted(() => {
   padding: 0.75rem 1.5rem;
   color: var(--gray-700);
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: all 0.5s ease;
   position: relative;
   min-height: 42px;
   width: 100%;
@@ -249,17 +249,18 @@ onMounted(() => {
 
 .nav-item span {
   font-size: 0.875rem;
-  transition: opacity 0.2s ease, width 0.2s ease;
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   white-space: nowrap;
   flex: 1;
   opacity: 1;
-  width: auto;
+  max-width: 200px;
   overflow: hidden;
 }
 
 .collapsed .nav-item span {
   opacity: 0;
-  width: 0;
+  max-width: 0;
+  margin-left: 0;
   flex: none;
 }
 
@@ -329,7 +330,7 @@ onMounted(() => {
 /* Adjust main content */
 :deep(.main-content) {
   margin-left: 280px;
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: margin-left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .collapsed + :deep(.main-content) {
