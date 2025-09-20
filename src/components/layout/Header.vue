@@ -9,7 +9,7 @@
         <slot name="actions"></slot>
         <div class="user-menu">
           <span class="user-name">{{ user?.nome }}</span>
-          <button class="btn btn-secondary btn-sm" @click="handleLogout">
+          <button class="btn btn-secondary btn-sm" @click="confirmLogout">
             <i class="fas fa-sign-out-alt"></i>
             Sair
           </button>
@@ -26,6 +26,13 @@ import { useAuth } from '@/composables/useAuth'
 
 const route = useRoute()
 const { user, logout } = useAuth()
+
+// Para impedir logout acidental
+const confirmLogout = async () => {
+  if (confirm('Deseja realmente sair do sistema?')) {
+    await logout()
+  }
+}
 
 type RouteNames = 
   | 'planos'
@@ -74,9 +81,7 @@ const currentPageSubtitle = computed(() => {
   return subtitles[name] || 'Gerencie suas configurações'
 })
 
-const handleLogout = async () => {
-  await logout()
-}
+// Movido para cima como confirmLogout
 </script>
 
 <style scoped>

@@ -9,8 +9,30 @@ import Quotas from '@/views/Quotas.vue'
 import VincularPapeisPermissoes from '@/views/VincularPapeisPermissoes.vue'
 import Agrupadores from '@/views/Agrupadores.vue'
 import VincularFuncPermissoes from '@/views/VincularFuncPermissoes.vue'
+import Login from '@/views/Login.vue'
+import EsqueciSenha from '@/views/EsqueciSenha.vue'
+import RedefinirSenha from '@/views/RedefinirSenha.vue'
+import { authService } from '@/services/authService'
 
 const routes = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: Login,
+    meta: { public: true }
+  },
+  {
+    path: '/esqueci-senha',
+    name: 'EsqueciSenha',
+    component: EsqueciSenha,
+    meta: { public: true }
+  },
+  {
+    path: '/redefinir-senha/:token',
+    name: 'RedefinirSenha',
+    component: RedefinirSenha,
+    meta: { public: true }
+  },
   {
     path: '/',
     redirect: '/direitos'
@@ -70,6 +92,20 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+// Navigation guard
+router.beforeEach((to, from, next) => {
+  const isPublicRoute = to.matched.some(record => record.meta.public)
+  const isAuthenticated = authService.isAuthenticated()
+
+  if (!isPublicRoute && !isAuthenticated) {
+    next({ name: 'Login' })
+  } else if (isAuthenticated && to.name === 'Login') {
+    next({ path: '/' })
+  } else {
+    next()
+  }
 })
 
 export default router
