@@ -139,11 +139,12 @@ onBeforeUnmount(() => {
   position: fixed;
   left: 0;
   top: 0;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
   overflow: hidden;
+  will-change: width;
 }
 
 .sidebar.collapsed {
@@ -235,10 +236,11 @@ onBeforeUnmount(() => {
   padding: 0.75rem 1.5rem;
   color: var(--gray-700);
   text-decoration: none;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: padding 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   min-height: 42px;
   width: 100%;
+  overflow: hidden;
 }
 
 .collapsed .nav-item {
@@ -287,17 +289,25 @@ onBeforeUnmount(() => {
 
 .nav-item span {
   font-size: 0.875rem;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: normal;
   word-break: break-word;
-  overflow-wrap: anywhere;
   line-height: 1.2;
   display: inline-block;
   overflow: hidden;
   flex: 1;
+  opacity: 0;
+  max-width: 180px;
+  transform: translateX(-15px);
+  transition: 
+    opacity 0.4s ease,
+    transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar:not(.collapsed) .nav-item span {
   opacity: 1;
-  max-width: 200px;
   transform: translateX(0);
+  transition-delay: 0.1s;
 }
 
 .collapsed .nav-item span {
@@ -308,6 +318,12 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   overflow: hidden;
   transform: translateX(-10px);
+  visibility: hidden;
+  transition: 
+    opacity 0.2s ease,
+    transform 0.3s ease,
+    max-width 0.3s ease,
+    visibility 0s linear 0.3s;
 }
 
 .collapsed .nav-item {
