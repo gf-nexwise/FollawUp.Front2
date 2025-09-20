@@ -11,23 +11,23 @@
     <div class="nav-menu">
       <div class="nav-section">
         <div class="nav-section-title" v-show="!isCollapsed">Gestão de Planos</div>
-        <router-link to="/planos" class="nav-item" :title="isCollapsed ? 'Planos' : ''">
+        <router-link to="/planos" class="nav-item">
           <i class="fas fa-layer-group"></i>
           <span class="nav-text">Planos</span>
         </router-link>
-        <router-link to="/direitos" class="nav-item" :title="isCollapsed ? 'Direitos & Limites' : ''">
+        <router-link to="/direitos" class="nav-item">
           <i class="fas fa-shield-alt"></i>
           <span>Direitos & Limites</span>
         </router-link>
-        <router-link to="/funcionalidades" class="nav-item" :title="isCollapsed ? 'Funcionalidades' : ''">
+        <router-link to="/funcionalidades" class="nav-item">
           <i class="fas fa-puzzle-piece"></i>
           <span>Funcionalidades</span>
         </router-link>
-        <router-link to="/precos" class="nav-item" :title="isCollapsed ? 'Preços' : ''">
+        <router-link to="/precos" class="nav-item">
           <i class="fas fa-dollar-sign"></i>
           <span>Preços</span>
         </router-link>
-        <router-link to="/quotas" class="nav-item" :title="isCollapsed ? 'Quotas de Uso' : ''">
+        <router-link to="/quotas" class="nav-item">
           <i class="fas fa-chart-pie"></i>
           <span>Quotas de Uso</span>
         </router-link>
@@ -35,15 +35,15 @@
       
       <div class="nav-section">
         <div class="nav-section-title">Controle de Acesso</div>
-        <router-link to="/papeis" class="nav-item" :title="isCollapsed ? 'Papéis' : ''">
+        <router-link to="/papeis" class="nav-item">
           <i class="fas fa-user-tag"></i>
           <span>Papéis</span>
         </router-link>
-        <router-link to="/permissoes" class="nav-item" :title="isCollapsed ? 'Permissões' : ''">
+        <router-link to="/permissoes" class="nav-item">
           <i class="fas fa-shield-alt"></i>
           <span>Permissões</span>
         </router-link>
-        <router-link to="/vincular-papeis-permissoes" class="nav-item" :title="isCollapsed ? 'Papéis & Permissões' : ''">
+        <router-link to="/vincular-papeis-permissoes" class="nav-item">
           <i class="fas fa-user-shield"></i>
           <span>Papéis & Permissões</span>
         </router-link>
@@ -51,11 +51,11 @@
       
       <div class="nav-section">
         <div class="nav-section-title">Configurações Avançadas</div>
-        <router-link to="/agrupadores" class="nav-item" :title="isCollapsed ? 'Agrupadores' : ''">
+        <router-link to="/agrupadores" class="nav-item">
           <i class="fas fa-layer-group"></i>
           <span>Agrupadores</span>
         </router-link>
-        <router-link to="/vincular-func-permissoes" class="nav-item" :title="isCollapsed ? 'Funcionalidades & Permissões' : ''">
+        <router-link to="/vincular-func-permissoes" class="nav-item">
           <i class="fas fa-puzzle-piece"></i>
           <span>Funcionalidades & Permissões</span>
         </router-link>
@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, nextTick, onBeforeUnmount } from 'vue'
 
 const isCollapsed = ref(false)
 
@@ -83,11 +83,49 @@ const toggleCollapse = () => {
   localStorage.setItem('sidebar_collapsed', isCollapsed.value.toString())
 }
 
-// Restaura o estado do sidebar do localStorage
+// helper para aplicar/remover title automaticamente em todos nav-items
+const applyTitlesForCollapsedState = () => {
+  const navItems = document.querySelectorAll('.sidebar .nav-item')
+  navItems.forEach((item) => {
+    const textEl = item.querySelector('span')
+    const label = textEl?.textContent?.trim() || ''
+    if (isCollapsed.value && label) {
+      item.setAttribute('title', label)
+    } else {
+      item.removeAttribute('title')
+    }
+  })
+}
+
+// Observa alterações no menu para garantir comportamento padrão em novos itens/seções
+let menuObserver: MutationObserver | null = null
+
 onMounted(() => {
   const savedCollapsed = localStorage.getItem('sidebar_collapsed')
   if (savedCollapsed !== null) {
     isCollapsed.value = savedCollapsed === 'true'
+  }
+  nextTick(() => {
+    applyTitlesForCollapsedState()
+    const menu = document.querySelector('.sidebar .nav-menu')
+    if (menu && 'MutationObserver' in window) {
+      menuObserver = new MutationObserver(() => {
+        applyTitlesForCollapsedState()
+      })
+      menuObserver.observe(menu, { childList: true, subtree: true })
+    }
+  })
+})
+
+watch(isCollapsed, async () => {
+  await nextTick()
+  applyTitlesForCollapsedState()
+})
+
+onBeforeUnmount(() => {
+  if (menuObserver) {
+    menuObserver.disconnect()
+    menuObserver = null
   }
 })
 </script>
@@ -101,7 +139,7 @@ onMounted(() => {
   position: fixed;
   left: 0;
   top: 0;
-  transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
@@ -125,7 +163,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.3s ease;
   justify-content: flex-start;
   padding: 0.5rem 1rem;
 }
@@ -187,7 +225,7 @@ onMounted(() => {
   letter-spacing: 0.5px;
   color: var(--gray-500);
   font-weight: 600;
-  transition: opacity 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .nav-item {
@@ -197,7 +235,7 @@ onMounted(() => {
   padding: 0.75rem 1.5rem;
   color: var(--gray-700);
   text-decoration: none;
-  transition: all 0.5s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   min-height: 42px;
   width: 100%;
@@ -238,8 +276,8 @@ onMounted(() => {
 }
 
 .collapsed .nav-item i {
-  width: auto;
-  margin: 0 auto;
+  width: 1.5rem;
+  margin: 0;
 }
 
 .collapsed .nav-item:hover i {
@@ -249,12 +287,17 @@ onMounted(() => {
 
 .nav-item span {
   font-size: 0.875rem;
-  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-  white-space: nowrap;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+  display: inline-block;
+  overflow: hidden;
   flex: 1;
   opacity: 1;
   max-width: 200px;
-  overflow: hidden;
+  transform: translateX(0);
 }
 
 .collapsed .nav-item span {
@@ -262,6 +305,13 @@ onMounted(() => {
   max-width: 0;
   margin-left: 0;
   flex: none;
+  white-space: nowrap;
+  overflow: hidden;
+  transform: translateX(-10px);
+}
+
+.collapsed .nav-item {
+  gap: 0;
 }
 
 .toggle-button {
@@ -330,7 +380,7 @@ onMounted(() => {
 /* Adjust main content */
 :deep(.main-content) {
   margin-left: 280px;
-  transition: margin-left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: margin-left 0.3s ease;
 }
 
 .collapsed + :deep(.main-content) {
