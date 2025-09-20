@@ -137,14 +137,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
-interface Column {
-  field?: string;
-  label: string;
-  type?: 'status' | 'actions';
-  width?: string;
-  sortable?: boolean;
-  formatter?: (value: any) => string;
-}
+import type { Column } from '@/types/grid'
 
 interface SortInfo {
   field: string;
