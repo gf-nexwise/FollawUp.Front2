@@ -20,13 +20,16 @@
   </teleport>
 </template>
 
-<script setup>
-defineProps({
-  title: {
-    type: String,
-    required: true
-  }
-})
+<script setup lang="ts">
+interface Props {
+  title: string;
+}
 
-defineEmits(['save', 'close'])
+interface Emits {
+  (e: 'save'): void;
+  (e: 'close'): void;
+}
+
+defineProps<Props>();
+defineEmits<Emits>();
 </script>

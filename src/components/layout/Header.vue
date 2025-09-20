@@ -19,15 +19,27 @@
   </header>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, RouteRecordName } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 
 const route = useRoute()
 const { user, logout } = useAuth()
 
-const titles = {
+type RouteNames = 
+  | 'planos'
+  | 'direitos'
+  | 'funcionalidades'
+  | 'quotas'
+  | 'precos'
+  | 'papeis'
+  | 'permissoes'
+  | 'vincular-papeis-permissoes'
+  | 'agrupadores'
+  | 'vincular-func-permissoes'
+
+const titles: Record<RouteNames, string> = {
   'planos': 'Dashboard de Planos',
   'direitos': 'Direitos e Limites',
   'funcionalidades': 'Funcionalidades',
@@ -40,7 +52,7 @@ const titles = {
   'vincular-func-permissoes': 'Vincular Funcionalidades às Permissões'
 }
 
-const subtitles = {
+const subtitles: Record<RouteNames, string> = {
   'planos': 'Gerencie dashboard de planos',
   'direitos': 'Gerencie direitos e limites',
   'funcionalidades': 'Gerencie funcionalidades',
@@ -53,8 +65,14 @@ const subtitles = {
   'vincular-func-permissoes': 'Vincule funcionalidades às permissões'
 }
 
-const currentPageTitle = computed(() => titles[route.name] || 'Gestão SaaS')
-const currentPageSubtitle = computed(() => subtitles[route.name] || 'Gerencie suas configurações')
+const currentPageTitle = computed(() => {
+  const name = route.name as RouteNames
+  return titles[name] || 'Gestão SaaS'
+})
+const currentPageSubtitle = computed(() => {
+  const name = route.name as RouteNames
+  return subtitles[name] || 'Gerencie suas configurações'
+})
 
 const handleLogout = async () => {
   await logout()

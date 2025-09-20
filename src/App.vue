@@ -32,22 +32,23 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, provide } from 'vue'
 import { useRoute } from 'vue-router'
 import Sidebar from './components/layout/Sidebar.vue'
 import Header from './components/layout/Header.vue'
 import Notification from './components/common/Notification.vue'
+import type { NotificationType } from '@/types/notifications'
 
 const route = useRoute()
 
-// Verifica se a rota atual é uma rota de autenticação
-const isAuthRoute = computed(() => !route.meta.public && route.meta.requiresAuth !== false)
+// TODO: Implementar lógica de autenticação adequada
+const isAuthRoute = computed(() => true) // Temporariamente permitindo todas as rotas
 
 // Sistema de notificações
-const notification = ref()
-const showNotification = (message, type) => {
-  notification.value.showNotification(message, type)
+const notification = ref<InstanceType<typeof Notification> | null>(null)
+const showNotification = (message: string, type: NotificationType = 'info'): void => {
+  notification.value?.showNotification(message, type)
 }
 
 // Fornece o método de notificação para toda a aplicação

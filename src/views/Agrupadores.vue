@@ -13,27 +13,35 @@
         <div class="tabs">
           <button 
             class="tab-button" 
-            :class="{ active: activeTab === 'FUNCIONALIDADE' }"
-            @click="activeTab = 'FUNCIONALIDADE'"
+            :class="{ active: activeTab === TipoAgrupador.FUNCIONALIDADE }"
+            @click="activeTab = TipoAgrupador.FUNCIONALIDADE"
           >
             Funcionalidades
           </button>
           <button 
             class="tab-button" 
-            :class="{ active: activeTab === 'PERMISSAO' }"
-            @click="activeTab = 'PERMISSAO'"
+            :class="{ active: activeTab === TipoAgrupador.PERMISSAO }"
+            @click="activeTab = TipoAgrupador.PERMISSAO"
           >
             Permissões
           </button>
         </div>
 
         <PaginatedGrid
-          :items="filteredAgrupadores"
+          :items="agrupadores"
           :columns="columns"
           :loading="loading"
           :loading-text="'Carregando...'"
+          :current-page="currentPage"
+          :total-pages="Math.ceil(totalItems / pageSize)"
+          :total-items="totalItems"
+          :items-per-page="pageSize"
+          :sort="currentSort"
           @edit="showFormHandler"
           @delete="deleteAgrupador"
+          @page-change="handlePageChange"
+          @sort="handleSort"
+          @update:items-per-page="handleItemsPerPage"
         />
       </div>
     </div>
@@ -63,8 +71,8 @@
         <div class="form-group">
           <label class="form-label">Tipo</label>
           <select v-model="formData.tipo" class="form-control form-select" required>
-            <option value="FUNCIONALIDADE">Funcionalidade</option>
-            <option value="PERMISSAO">Permissão</option>
+            <option :value="TipoAgrupador.FUNCIONALIDADE">Funcionalidade</option>
+            <option :value="TipoAgrupador.PERMISSAO">Permissão</option>
           </select>
         </div>
       </form>
@@ -72,63 +80,53 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import FormModal from '@/components/modals/FormModal.vue'
-import PaginatedGrid from '@/components/ui/DataGrid/PaginatedGrid.vue'
-import agrupadoresService from '@/services/agrupadoresService'
+import PaginatedGrid from '@/components/ui/Grid/PaginatedGrid.vue'
 import { useNotification } from '@/composables/useNotification'
+import type { Column } from '@/types/grid'
+import type { AgrupadorFilter } from '@/types/api/agrupadores/filters'
+import type { PagedResponse } from '@/types/api/base/responses'
+import type { SortInfo } from '@/types/api/base/filters'
+
+// Importações do módulo de agrupadores
+import { agrupadoresService, TipoAgrupador } from '@/modules/agrupadores'
+import type { IAgrupador } from '@/modules/agrupadores'
 
 const { showNotification } = useNotification()
 
-const columns = [
+const columns: Column[] = [
   { field: 'nome', label: 'Nome' },
   { field: 'descricao', label: 'Descrição' },
   { field: 'ativo', label: 'Status', type: 'status', width: '120px' },
   { type: 'actions', label: 'Ações', width: '100px' }
 ]
 
-const agrupadores = ref([])
-const loading = ref(false)
-const showForm = ref(false)
-const isEditing = ref(false)
-const activeTab = ref('FUNCIONALIDADE')
+const agrupadores = ref<IAgrupador[]>([])
+const loading = ref<boolean>(false)
+const showForm = ref<boolean>(false)
+const isEditing = ref<boolean>(false)
+const activeTab = ref<TipoAgrupador>(TipoAgrupador.FUNCIONALIDADE)
+const currentPage = ref<number>(1)
+const pageSize = ref<number>(10)
+const totalItems = ref<number>(0)
+const currentSort = ref<SortInfo>({ field: 'nome', direction: 'asc' })
 
-// Carrega os agrupadores quando o componente é montado ou quando a tab muda
-const loadAgrupadores = async () => {
-  try {
-    loading.value = true
-    agrupadores.value = await agrupadoresService.listar(activeTab.value)
-  } catch (error) {
-    console.error('Erro ao carregar agrupadores:', error)
-    showNotification({
-      type: 'error',
-      message: 'Erro ao carregar agrupadores. Tente novamente mais tarde.'
-    })
-  } finally {
-    loading.value = false
-  }
+interface FormData extends Omit<IAgrupador, 'id'> {
+  id: number | null;
 }
 
-// Watch para recarregar quando mudar a tab
-watch(activeTab, loadAgrupadores)
-
-// Carrega os dados iniciais
-onMounted(loadAgrupadores)
-
-const formData = ref({
+const formData = ref<FormData>({
   id: null,
   nome: '',
   descricao: '',
-  tipo: 'FUNCIONALIDADE',
+  tipo: TipoAgrupador.FUNCIONALIDADE,
   ativo: true
 })
 
-const filteredAgrupadores = computed(() => {
-  return agrupadores.value.filter(a => a.tipo === activeTab.value)
-})
-
-const showFormHandler = (agrupador = null) => {
+// Define loadAgrupadores function first
+const showFormHandler = (agrupador: IAgrupador | null = null): void => {
   showForm.value = true
   if (agrupador) {
     isEditing.value = true
@@ -145,7 +143,7 @@ const showFormHandler = (agrupador = null) => {
   }
 }
 
-const hideFormHandler = () => {
+const hideFormHandler = (): void => {
   showForm.value = false
   isEditing.value = false
   formData.value = {
@@ -157,16 +155,18 @@ const hideFormHandler = () => {
   }
 }
 
-const handleSubmit = async () => {
+const handleSubmit = async (): Promise<void> => {
   try {
-    if (isEditing.value) {
-      await agrupadoresService.atualizar(formData.value.id, formData.value)
+    const { id, ...agrupadoresData } = formData.value
+    
+    if (isEditing.value && id !== null) {
+      await agrupadoresService.atualizar(id, agrupadoresData)
       showNotification({
         type: 'success',
         message: 'Agrupador atualizado com sucesso!'
       })
     } else {
-      await agrupadoresService.criar(formData.value)
+      await agrupadoresService.criar(agrupadoresData)
       showNotification({
         type: 'success',
         message: 'Agrupador criado com sucesso!'
@@ -183,7 +183,59 @@ const handleSubmit = async () => {
   }
 }
 
-const deleteAgrupador = async (item) => {
+const handleSort = (sort: SortInfo): void => {
+  currentSort.value = sort;
+}
+
+const handlePageChange = (page: number): void => {
+  currentPage.value = page;
+}
+
+const handleItemsPerPage = (value: number): void => {
+  pageSize.value = value;
+  currentPage.value = 1;
+  loadAgrupadores();
+}
+
+const loadAgrupadores = async (): Promise<void> => {
+  try {
+    console.log('Iniciando carregamento de agrupadores')
+    loading.value = true
+    console.log('Estado atual:', { 
+      activeTab: activeTab.value, 
+      currentPage: currentPage.value,
+      pageSize: pageSize.value,
+      currentSort: currentSort.value
+    })
+    const response = await agrupadoresService.listarPaginado({
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      sort: currentSort.value ? (currentSort.value.direction === 'desc' ? `-${currentSort.value.field}` : currentSort.value.field) : undefined,
+      tipo: activeTab.value
+    })
+    console.log('Resposta recebida:', response)
+    agrupadores.value = response.items
+    totalItems.value = response.totalItems
+    console.log('Estado atualizado:', { 
+      agrupadores: agrupadores.value, 
+      totalItems: totalItems.value 
+    })
+  } catch (error) {
+    console.error('Erro ao carregar agrupadores:', error)
+    showNotification({
+      type: 'error',
+      message: 'Erro ao carregar agrupadores. Tente novamente mais tarde.'
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+// Set up watchers and mounted hook after function is defined
+watch([activeTab, currentPage, currentSort], loadAgrupadores)
+onMounted(loadAgrupadores)
+
+const deleteAgrupador = async (item: IAgrupador): Promise<void> => {
   if (confirm('Tem certeza que deseja excluir este agrupador?')) {
     try {
       await agrupadoresService.excluir(item.id, activeTab.value)
