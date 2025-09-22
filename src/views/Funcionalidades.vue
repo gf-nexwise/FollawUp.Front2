@@ -27,6 +27,7 @@
     <FormModal
       v-if="showForm"
       :title="'Detalhes da Funcionalidade'"
+      :loading="loadingModal"
       @close="hideFormHandler"
     >
       <form>
@@ -112,9 +113,12 @@ const hideFormHandler = () => {
   isEditing.value = false;
 };
 
+// Estado separado para loading do modal
+const loadingModal = ref(false);
+
 const visualizarDetalhe = async (item: IFuncionalidade) => {
   try {
-    loading.value = true;
+    loadingModal.value = true;
     const response = await funcionalidadesService.buscarPorId(item.id);
     formData.value = { ...response.data };
     isEditing.value = false;
@@ -126,7 +130,7 @@ const visualizarDetalhe = async (item: IFuncionalidade) => {
       message: "Erro ao carregar detalhes da funcionalidade. Tente novamente mais tarde.",
     });
   } finally {
-    loading.value = false;
+    loadingModal.value = false;
   }
 };
 
