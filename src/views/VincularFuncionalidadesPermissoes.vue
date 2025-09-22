@@ -72,19 +72,16 @@ const funcionalidadeService = FuncionalidadePermissaoService.getInstance()
 const funcionalidades = ref<IFuncionalidadeSelection[]>([])
 const selectedFuncionalidade = ref<IFuncionalidadeDetalhe | null>(null)
 const permissoes = ref<IFuncionalidadePermissao[]>([])
+const funcionalidadePermissoes = ref<{ id: string, nome: string }[]>([])
 const showModal = ref(false)
 const loading = ref(true)
 const loadingDetails = ref(false)
 const loadingAction = ref(false)
 
 // Computed properties
-const funcionalidadePermissoes = computed(() => 
-  selectedFuncionalidade.value?.permissions || []
-)
-
 const availablePermissoes = computed(() => {
   if (!selectedFuncionalidade.value) return []
-  const vinculadas = new Set(funcionalidadePermissoes.value.map((p: IFuncionalidadePermissao) => p.id))
+  const vinculadas = new Set(funcionalidadePermissoes.value.map(p => p.id))
   return permissoes.value.filter((p: IFuncionalidadePermissao) => !vinculadas.has(p.id))
 })
 
@@ -119,14 +116,28 @@ const loadFuncionalidades = async () => {
   }
 }
 
+// Carrega as permissões vinculadas à funcionalidade selecionada
+const loadFuncionalidadePermissoes = async (funcionalidadeId: string) => {
+  try {
+    const permissoesVinculadas = await funcionalidadeService.listarPermissoesVinculadas(funcionalidadeId)
+    funcionalidadePermissoes.value = permissoesVinculadas
+  } catch (error) {
+    console.error('Erro ao carregar permissões vinculadas:', error)
+    showNotification({
+      type: 'error',
+      message: 'Erro ao carregar permissões vinculadas. Tente novamente mais tarde.'
+    })
+  }
+}
+
 // Carrega os detalhes completos de uma funcionalidade específica
 const selectFuncionalidade = async (funcionalidade: ListItem) => {
   if (!funcionalidade?.id) return
   
   try {
     loadingDetails.value = true
-    const response = await funcionalidadeService.buscarPorId(funcionalidade.id.toString())
-    selectedFuncionalidade.value = response.data || response
+    selectedFuncionalidade.value = funcionalidade as IFuncionalidadeDetalhe
+    await loadFuncionalidadePermissoes(funcionalidade.id.toString())
   } catch (error) {
     console.error('Erro ao carregar detalhes da funcionalidade:', error)
     showNotification({
@@ -153,8 +164,8 @@ const handleAddPermissao = async (permissao: IFuncionalidadePermissao) => {
       loadingAction.value = true
       await funcionalidadeService.vincularPermissao(selectedFuncionalidade.value.id, permissao.id)
       
-      // Recarrega os detalhes da funcionalidade para atualizar a lista
-      await selectFuncionalidade(selectedFuncionalidade.value)
+      // Recarrega as permissões vinculadas para atualizar a lista
+      await loadFuncionalidadePermissoes(selectedFuncionalidade.value.id)
       
       showNotification({
         type: 'success',
@@ -180,8 +191,8 @@ const desvincularPermissao = async (permissaoId: string) => {
       loadingAction.value = true
       await funcionalidadeService.desvincularPermissao(selectedFuncionalidade.value.id, permissaoId)
       
-      // Recarrega os detalhes da funcionalidade para atualizar a lista
-      await selectFuncionalidade(selectedFuncionalidade.value)
+      // Recarrega as permissões vinculadas para atualizar a lista
+      await loadFuncionalidadePermissoes(selectedFuncionalidade.value.id)
       
       showNotification({
         type: 'success',

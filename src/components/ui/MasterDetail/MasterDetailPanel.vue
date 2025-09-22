@@ -93,13 +93,18 @@ export default defineComponent({
 })
 </script>
 
-<script setup lang="ts" generic="T extends Record<string, any>">
-import { defineProps, defineEmits, computed } from 'vue'
+<script setup lang="ts">
+import { defineProps, defineEmits } from 'vue'
 import Spinner from '@/components/common/Spinner.vue'
 
+interface BaseItem {
+  id: string | number
+  [key: string]: any
+}
+
 interface Props {
-  items: T[]
-  selectedItem: T | null
+  items: BaseItem[]
+  selectedItem: BaseItem | null
   masterTitle: string
   masterIcon: string
   detailTitle: string
@@ -135,24 +140,24 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  (e: 'select', item: T): void
+  (e: 'select', item: BaseItem): void
   (e: 'add'): void
   (e: 'refresh'): void
 }>()
 
-const getItemKey = (item: T): string => {
+const getItemKey = (item: BaseItem): string => {
   return String(item[props.keyField])
 }
 
-const getItemTitle = (item: T): string => {
+const getItemTitle = (item: BaseItem): string => {
   return String(item[props.titleField] || '')
 }
 
-const getItemDescription = (item: T): string => {
+const getItemDescription = (item: BaseItem): string => {
   return String(item[props.descriptionField] || '')
 }
 
-const handleSelect = (item: T) => {
+const handleSelect = (item: BaseItem) => {
   emit('select', item)
 }
 </script>

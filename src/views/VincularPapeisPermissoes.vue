@@ -70,16 +70,13 @@ const papeisService = PapeisService.getInstance()
 const papeis = ref<IPapelSelection[]>([]) // Inicializa como array vazio
 const selectedPapel = ref<IPapelDetalhe | null>(null)
 const permissoes = ref<IPapelPermissao[]>([])
+const papelPermissoes = ref<{ id: string, nome: string }[]>([])
 const showModal = ref(false)
 const loading = ref(true) // Começa como true para mostrar loading inicial
 const loadingDetails = ref(false)
 const loadingAction = ref(false)
 
 // Computed properties
-const papelPermissoes = computed(() => 
-  selectedPapel.value?.permissions || []
-)
-
 const availablePermissoes = computed(() => {
   if (!selectedPapel.value) return []
   const vinculadas = new Set(papelPermissoes.value.map(p => p.id))
@@ -117,14 +114,28 @@ const loadPapeis = async () => {
   }
 }
 
+// Carrega as permissões vinculadas ao papel selecionado
+const loadPapelPermissoes = async (papelId: string) => {
+  try {
+    const permissoesVinculadas = await papeisService.listarPermissoesVinculadas(papelId)
+    papelPermissoes.value = permissoesVinculadas
+  } catch (error) {
+    console.error('Erro ao carregar permissões vinculadas:', error)
+    showNotification({
+      type: 'error',
+      message: 'Erro ao carregar permissões vinculadas. Tente novamente mais tarde.'
+    })
+  }
+}
+
 // Carrega os detalhes completos de um papel específico
 const selectPapel = async (papel: ListItem) => {
   if (!papel?.id) return
   
   try {
     loadingDetails.value = true
-    const response = await papeisService.buscarPorId(papel.id.toString())
-    selectedPapel.value = response as IPapelDetalhe
+    selectedPapel.value = papel as IPapelDetalhe
+    await loadPapelPermissoes(papel.id.toString())
   } catch (error) {
     console.error('Erro ao carregar detalhes do papel:', error)
     showNotification({
@@ -151,8 +162,8 @@ const handleAddPermissao = async (permissao: IPapelPermissao) => {
       loadingAction.value = true
       await papeisService.vincularPermissao(selectedPapel.value.id, permissao.id)
       
-      // Recarrega os detalhes do papel para atualizar a lista
-      await selectPapel(selectedPapel.value)
+      // Recarrega as permissões vinculadas para atualizar a lista
+      await loadPapelPermissoes(selectedPapel.value.id)
       
       showNotification({
         type: 'success',
@@ -178,8 +189,8 @@ const desvincularPermissao = async (permissaoId: string) => {
       loadingAction.value = true
       await papeisService.desvincularPermissao(selectedPapel.value.id, permissaoId)
       
-      // Recarrega os detalhes do papel para atualizar a lista
-      await selectPapel(selectedPapel.value)
+      // Recarrega as permissões vinculadas para atualizar a lista
+      await loadPapelPermissoes(selectedPapel.value.id)
       
       showNotification({
         type: 'success',

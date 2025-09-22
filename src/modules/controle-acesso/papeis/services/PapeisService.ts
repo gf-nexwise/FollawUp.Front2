@@ -46,6 +46,11 @@ export class PapeisService extends BaseHttpService<IPapelBase, PapelFilter> {
     return response.data
   }
 
+  public async listarPermissoesVinculadas(papelId: string): Promise<{ id: string, nome: string }[]> {
+    const response = await this.http.get(`${this.baseUrl}/${papelId}/permissoes/selection`, this.getRequestConfig())
+    return response.data
+  }
+
   public async upsert(papel: IUpsertRoleRequest): Promise<IRoleDetalheDto> {
     const response = await this.http.post(this.baseUrl, papel, this.getRequestConfig())
     return response.data

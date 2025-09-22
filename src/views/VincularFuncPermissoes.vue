@@ -90,7 +90,7 @@ const loadFuncionalidades = async () => {
   }
 }
 
-const selectFuncionalidade = async (funcionalidade: IFuncionalidadeSelection) => {
+const selectFuncionalidade = async (funcionalidade: any) => {
   try {
     loading.value = true
     const response = await funcionalidadePermissaoService.buscarPorId(funcionalidade.id)
