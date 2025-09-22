@@ -37,4 +37,34 @@ export class FuncionalidadesService extends BaseHttpService<IFuncionalidade, Fun
   public async excluir(id: string): Promise<void> {
     await this.delete(id)
   }
+
+  public async upsert(funcionalidade: IFuncionalidade): Promise<IFuncionalidade> {
+    if (funcionalidade.id) {
+      const response = await this.atualizar(
+        funcionalidade.id,
+        {
+          nome: funcionalidade.nome,
+          categoria: funcionalidade.categoria,
+          descricao: funcionalidade.descricao,
+          tipoLimite: funcionalidade.tipoLimite,
+          unidadeMedida: funcionalidade.unidadeMedida,
+          ordem: funcionalidade.ordem,
+          ativo: funcionalidade.ativo,
+          visivel: funcionalidade.visivel
+        }
+      );
+      return response;
+    } else {
+      return await this.criar({
+        nome: funcionalidade.nome,
+        categoria: funcionalidade.categoria,
+        descricao: funcionalidade.descricao,
+        tipoLimite: funcionalidade.tipoLimite,
+        unidadeMedida: funcionalidade.unidadeMedida,
+        ordem: funcionalidade.ordem,
+        ativo: funcionalidade.ativo,
+        visivel: funcionalidade.visivel
+      });
+    }
+  }
 }

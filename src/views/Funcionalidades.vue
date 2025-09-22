@@ -3,6 +3,11 @@
     <div class="card">
       <div class="card-header">
         <h3 class="card-title"><i class="fas fa-puzzle-piece"></i> Funcionalidades</h3>
+        <div class="card-tools">
+          <button class="btn btn-primary" @click="showAddModal">
+            <i class="fas fa-plus"></i> Nova Funcionalidade
+          </button>
+        </div>
       </div>
       <div class="card-body">
         <PaginatedGrid
@@ -15,8 +20,9 @@
           :total-items="totalItems"
           :items-per-page="pageSize"
           :sort="currentSort"
-          :actions="['view']"
+          :actions="['view', 'edit']"
           @view="visualizarDetalhe"
+          @edit="showEditModal"
           @page-change="handlePageChange"
           @sort="handleSort"
           @update:items-per-page="handleItemsPerPage"
@@ -26,47 +32,65 @@
 
     <FormModal
       v-if="showForm"
-      :title="'Detalhes da Funcionalidade'"
+      :title="getModalTitle"
+      :mode="modalMode"
       :loading="loadingModal"
       @close="hideFormHandler"
+      @save="handleSave"
     >
       <form>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Nome</label>
-            <input v-model="formData.nome" type="text" class="form-control" disabled />
+            <input v-model="formData.nome" type="text" class="form-control" :disabled="modalMode === 'view'" />
           </div>
           <div class="form-group">
             <label class="form-label">Categoria</label>
-            <input v-model="formData.categoria" type="text" class="form-control" disabled />
+            <input v-model="formData.categoria" type="text" class="form-control" :disabled="modalMode === 'view'" />
           </div>
         </div>
         <div class="form-group">
           <label class="form-label">Descrição</label>
-          <input v-model="formData.descricao" type="text" class="form-control" disabled />
+          <input v-model="formData.descricao" type="text" class="form-control" :disabled="modalMode === 'view'" />
         </div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Tipo de Limite</label>
-            <input v-model="formData.tipoLimite" type="text" class="form-control" disabled />
+            <input v-model="formData.tipoLimite" type="text" class="form-control" :disabled="modalMode === 'view'" />
           </div>
           <div class="form-group">
             <label class="form-label">Unidade de Medida</label>
-            <input v-model="formData.unidadeMedida" type="text" class="form-control" disabled />
+            <input v-model="formData.unidadeMedida" type="text" class="form-control" :disabled="modalMode === 'view'" />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Ordem</label>
-            <input v-model.number="formData.ordem" type="number" class="form-control" disabled />
+            <input v-model.number="formData.ordem" type="number" class="form-control" :disabled="modalMode === 'view'" />
           </div>
           <div class="form-group">
             <label class="form-label">Status</label>
-            <input :value="formData.ativo ? 'Ativo' : 'Inativo'" type="text" class="form-control" disabled />
+            <div class="form-check">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                v-model="formData.ativo"
+                :disabled="modalMode === 'view'"
+              />
+              <label class="form-check-label">Ativo</label>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Visível</label>
-            <input :value="formData.visivel ? 'Sim' : 'Não'" type="text" class="form-control" disabled />
+            <div class="form-check">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                v-model="formData.visivel"
+                :disabled="modalMode === 'view'"
+              />
+              <label class="form-check-label">Visível</label>
+            </div>
           </div>
         </div>
       </form>
@@ -77,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import FormModal from "@/components/modals/FormModal.vue";
 import PaginatedGrid from "@/components/ui/Grid/PaginatedGrid.vue";
 import { useNotification } from "@/composables/useNotification";
@@ -99,40 +123,100 @@ const funcionalidadesService = FuncionalidadesService.getInstance();
 const funcionalidades = ref<IFuncionalidadeList[]>([]);
 const loading = ref<boolean>(false);
 const showForm = ref<boolean>(false);
-const isEditing = ref<boolean>(false);
+const modalMode = ref<'view' | 'edit' | 'add'>('view');
 const currentPage = ref<number>(1);
 const formData = ref<IFuncionalidade>({} as IFuncionalidade);
 const pageSize = ref<number>(10);
 const totalItems = ref<number>(0);
 const currentSort = ref<SortInfo>({ field: "nome", direction: "asc" }); // Default sort by nome
 
-// Função para visualizar detalhes
-const hideFormHandler = () => {
-  showForm.value = false;
-  formData.value = {} as IFuncionalidade;
-  isEditing.value = false;
-};
-
 // Estado separado para loading do modal
 const loadingModal = ref(false);
 
-const visualizarDetalhe = async (item: IFuncionalidade) => {
+// Computed para título do modal
+const getModalTitle = computed(() => {
+  switch (modalMode.value) {
+    case 'add':
+      return 'Nova Funcionalidade';
+    case 'edit':
+      return 'Editar Funcionalidade';
+    default:
+      return 'Detalhes da Funcionalidade';
+  }
+});
+
+// Função para abrir modal de adição
+const showAddModal = () => {
+  formData.value = {
+    nome: '',
+    categoria: '',
+    descricao: '',
+    tipoLimite: '',
+    unidadeMedida: '',
+    ordem: 0,
+    ativo: true,
+    visivel: true,
+    key: '',
+  } as IFuncionalidade;
+  modalMode.value = 'add';
+  showForm.value = true;
+};
+
+// Função para abrir modal de edição
+const loadFuncionalidadeAndShowModal = async (item: IFuncionalidade, mode: 'view' | 'edit') => {
   try {
     loadingModal.value = true;
     const response = await funcionalidadesService.buscarPorId(item.id);
     formData.value = { ...response.data };
-    isEditing.value = false;
+    modalMode.value = mode;
     showForm.value = true;
   } catch (error) {
-    console.error("Erro ao carregar detalhes da funcionalidade:", error);
+    console.error(`Erro ao carregar ${mode === 'view' ? 'detalhes da' : ''} funcionalidade:`, error);
     showNotification({
       type: "error",
-      message: "Erro ao carregar detalhes da funcionalidade. Tente novamente mais tarde.",
+      message: `Erro ao carregar ${mode === 'view' ? 'detalhes da' : ''} funcionalidade. Tente novamente mais tarde.`,
     });
   } finally {
     loadingModal.value = false;
   }
 };
+
+// Função para visualizar detalhes
+const visualizarDetalhe = (item: IFuncionalidade) => loadFuncionalidadeAndShowModal(item, 'view');
+
+// Função para editar
+const showEditModal = (item: IFuncionalidade) => loadFuncionalidadeAndShowModal(item, 'edit');
+
+// Função para salvar (create/update)
+const handleSave = async () => {
+  try {
+    loadingModal.value = true;
+    await funcionalidadesService.upsert(formData.value);
+    showNotification({
+      type: "success",
+      message: `Funcionalidade ${modalMode.value === 'add' ? 'adicionada' : 'atualizada'} com sucesso!`,
+    });
+    hideFormHandler();
+    await loadFuncionalidades();
+  } catch (error) {
+    console.error("Erro ao salvar funcionalidade:", error);
+    showNotification({
+      type: "error",
+      message: `Erro ao ${modalMode.value === 'add' ? 'adicionar' : 'atualizar'} funcionalidade. Tente novamente mais tarde.`,
+    });
+  } finally {
+    loadingModal.value = false;
+  }
+};
+
+// Função para fechar o modal
+const hideFormHandler = () => {
+  showForm.value = false;
+  formData.value = {} as IFuncionalidade;
+  modalMode.value = 'view';
+};
+
+
 
 // Definição das colunas
 const columns = ref<Column[]>([
@@ -190,6 +274,25 @@ onMounted(loadFuncionalidades);
   display: flex;
   gap: 0.5rem;
   justify-content: center;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+}
+
+.card-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card-tools {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .form-row {

@@ -149,10 +149,6 @@
 import { computed, ref, useAttrs } from 'vue'
 import type { Column } from '@/types/grid'
 
-defineOptions({
-  name: 'PaginatedGrid'
-})
-
 interface SortInfo {
   field: string;
   direction: 'asc' | 'desc';

@@ -49,6 +49,8 @@
     <FormModal
       v-if="showForm"
       :title="isEditing ? 'Editar Agrupador' : 'Novo Agrupador'"
+      :mode="isEditing ? 'edit' : 'add'"
+      :loading="loading"
       @close="hideFormHandler"
       @save="handleSubmit"
     >

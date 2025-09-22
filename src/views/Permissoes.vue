@@ -32,6 +32,8 @@
     <FormModal
       v-if="showForm"
       :title="isEditing ? 'Editar Permissão' : 'Nova Permissão'"
+      :mode="isEditing ? 'edit' : 'add'"
+      :loading="loading"
       @close="hideFormHandler"
       @save="handleSubmit"
     >
