@@ -8,7 +8,6 @@
       master-icon="fas fa-user-tag"
       detail-title="Permissões"
       detail-icon="fas fa-shield-alt"
-
       add-button-text="Vincular Permissão"
       empty-state-title="Selecione um Papel"
       empty-state-description="Escolha um papel à esquerda para gerenciar suas permissões."
