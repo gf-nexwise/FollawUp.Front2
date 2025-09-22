@@ -1,94 +1,54 @@
 <template>
   <div>
-    <div class="master-detail">
-      <div class="master-panel">
-        <div class="panel-header">
-          <h3 class="panel-title">
-            <i class="fas fa-user-tag"></i> Papéis
-          </h3>
+    <MasterDetailPanel
+      :items="papeis"
+      :selected-item="selectedPapel"
+      :loading="loading"
+      master-title="Papéis"
+      master-icon="fas fa-user-tag"
+      detail-title="Permissões"
+      detail-icon="fas fa-shield-alt"
+
+      add-button-text="Vincular Permissão"
+      empty-state-title="Selecione um Papel"
+      empty-state-description="Escolha um papel à esquerda para gerenciar suas permissões."
+      detail-header-title="Gerenciar Permissões"
+      :show-add-button="true"
+      @select="selectPapel"
+      @add="showAddItemModal"
+    >
+      <template #detail-content>
+        <div v-if="!papelPermissoes?.length" class="empty-state">
+          <i class="fas fa-shield-alt"></i>
+          <h3>Nenhuma permissão vinculada</h3>
+          <p>Use o botão acima para vincular permissões a este papel.</p>
         </div>
-        <div class="panel-body">
-          <ul class="plan-list">
-            <li
-              v-for="papel in papeis"
-              :key="papel.id"
-              :class="['plan-item', { active: selectedPapel && selectedPapel.id === papel.id }]"
-              @click="selectPapel(papel)"
-            >
-              <div class="plan-info">
-                <h4>{{ papel.nome }}</h4>
-                <p>{{ papel.descricao }}</p>
-              </div>
-              <span :class="['status-badge', papel.ativo ? 'active' : 'inactive']">
-                {{ papel.ativo ? 'Ativo' : 'Inativo' }}
-              </span>
-            </li>
-          </ul>
-        </div>
-      </div>
-      
-      <div class="detail-panel">
-        <div class="panel-header">
-          <h3 class="panel-title">
-            <i class="fas fa-shield-alt"></i> Permissões
-          </h3>
-          <button
-            v-if="selectedPapel"
-            class="btn btn-primary btn-sm"
-            @click="showAddItemModal"
+        
+        <div v-else class="items-list">
+          <div
+            v-for="permissao in papelPermissoes"
+            :key="permissao.id"
+            class="item-row"
           >
-            <i class="fas fa-plus"></i> Vincular Permissão
-          </button>
-        </div>
-        <div class="panel-body">
-          <div v-if="!selectedPapel" class="empty-state">
-            <i class="fas fa-mouse-pointer"></i>
-            <h3>Selecione um Papel</h3>
-            <p>Escolha um papel à esquerda para gerenciar suas permissões.</p>
-          </div>
-          
-          <div v-else>
-            <div class="detail-header">
-              <div>
-                <div class="breadcrumb">
-                  <span>{{ selectedPapel.nome }}</span>
-                  <i class="fas fa-chevron-right"></i>
-                  <span>Permissões</span>
-                </div>
-                <h2 class="detail-title">Gerenciar Permissões</h2>
+            <div class="item-info">
+              <div class="item-title">{{ permissao.nome }}</div>
+              <div class="item-subtitle">{{ permissao.key }}</div>
+              <div v-if="permissao.descricao" class="item-description">
+                {{ permissao.descricao }}
               </div>
             </div>
-            
-            <div v-if="!papelPermissoes?.length" class="empty-state">
-              <i class="fas fa-shield-alt"></i>
-              <h3>Nenhuma permissão vinculada.</h3>
-              <p>Use o botão acima para vincular permissões a este papel.</p>
-            </div>
-            
-            <div v-else class="items-list">
-              <div
-                v-for="permissao in papelPermissoes"
-                :key="permissao.id"
-                class="item-row"
+            <div class="item-actions">
+              <button
+                class="btn btn-danger btn-sm"
+                @click="desvincularPermissao(permissao.id)"
               >
-                <div class="item-info">
-                  <div class="item-title">{{ permissao.nome }}</div>
-                  <div class="item-subtitle">{{ permissao.key }}</div>
-                </div>
-                <div class="item-actions">
-                  <button
-                    class="btn btn-danger btn-sm"
-                    @click="desvincularPermissao(permissao.id)"
-                  >
-                    <i class="fas fa-unlink"></i>
-                  </button>
-                </div>
-              </div>
+                <i class="fas fa-unlink"></i>
+              </button>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </template>
+    </MasterDetailPanel>
 
     <AddItemModal
       v-if="showModal"
@@ -100,59 +60,84 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useNotification } from '@/composables/useNotification'
+import MasterDetailPanel from '@/components/ui/MasterDetail/MasterDetailPanel.vue'
 import AddItemModal from '@/components/modals/AddItemModal.vue'
+import { PapeisService } from '@/modules/controle-acesso/papeis/services/PapeisService'
+import type { IPapelSelection, IPapelDetalhe } from '@/modules/controle-acesso/papeis/types'
+import type { IPermissao } from '@/modules/controle-acesso/permissoes/types'
 
-// Lista de papéis (mockada por enquanto)
-const papeis = ref([
-  {
-    id: 1,
-    nome: 'Advogado(a) Gestor(a)',
-    descricao: 'Supervisiona uma equipe...',
-    ativo: true,
-    permissoesIds: [2, 4, 6, 8]
-  },
-  {
-    id: 2,
-    nome: 'Advogado(a) Parceiro(a)',
-    descricao: 'Atua em casos específicos.',
-    ativo: true,
-    permissoesIds: [2, 4]
-  }
-])
+type ListItem = {
+  id: string | number
+  [key: string]: any
+}
 
-// Lista de todas as permissões disponíveis
-const permissoes = ref([
-  { id: 1, nome: 'Adicionar Assunto', key: 'processos:adicionar-assunto', descricao: '...', ativo: true },
-  { id: 2, nome: 'Listar Processos', key: 'processos:listar', descricao: '...', ativo: true },
-  { id: 4, nome: 'Criar Caso', key: 'casos:criar', descricao: '...', ativo: true },
-  { id: 6, nome: 'Desvincular Processo', key: 'casos:desvincular-processo', descricao: '...', ativo: true },
-  { id: 8, nome: 'Criar Acesso', key: 'acesso:criar', descricao: '...', ativo: true },
-  { id: 9, nome: 'Obter Acesso', key: 'acesso:obter', descricao: '...', ativo: true }
-])
+// Interface local para permissões vinculadas ao papel
+interface IPapelPermissao {
+  id: string
+  nome: string
+  descricao: string
+  key: string
+}
 
-const selectedPapel = ref(null)
+const { showNotification } = useNotification()
+const papeisService = PapeisService.getInstance()
+
+// Estado do componente
+const papeis = ref<IPapelSelection[]>() // Inicializa como array vazio
+const selectedPapel = ref<IPapelDetalhe | null>(null)
+const permissoes = ref<IPapelPermissao[]>([])
 const showModal = ref(false)
+const loading = ref(true) // Começa como true para mostrar loading inicial
+const loadingDetails = ref(false)
 
-// Permissões vinculadas ao papel selecionado
-const papelPermissoes = computed(() => {
-  if (!selectedPapel.value) return []
-  return permissoes.value.filter(p => 
-    selectedPapel.value.permissoesIds.includes(p.id)
-  )
-})
+// Computed properties
+const papelPermissoes = computed(() => 
+  selectedPapel.value?.permissions || []
+)
 
-// Permissões disponíveis para vincular (não vinculadas ainda)
 const availablePermissoes = computed(() => {
   if (!selectedPapel.value) return []
-  return permissoes.value.filter(p => 
-    !selectedPapel.value.permissoesIds.includes(p.id)
-  )
+  const vinculadas = new Set(papelPermissoes.value.map(p => p.id))
+  return permissoes.value.filter(p => !vinculadas.has(p.id))
 })
 
-const selectPapel = (papel) => {
-  selectedPapel.value = papel
+// Carrega a lista inicial de papéis (apenas ID, Nome e Descrição)
+const loadPapeis = async () => {
+  try {
+    loading.value = true
+    const papeisList = await papeisService.listarSelection()
+    papeis.value = papeisList
+  } catch (error) {
+    console.error('Erro ao carregar papéis:', error)
+    showNotification({
+      type: 'error',
+      message: 'Erro ao carregar papéis. Tente novamente mais tarde.'
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+// Carrega os detalhes completos de um papel específico
+const selectPapel = async (papel: ListItem) => {
+  if (!papel?.id) return
+  
+  try {
+    loadingDetails.value = true
+    const response = await papeisService.buscarPorId(papel.id.toString())
+    selectedPapel.value = response.data
+  } catch (error) {
+    console.error('Erro ao carregar detalhes do papel:', error)
+    showNotification({
+      type: 'error',
+      message: 'Erro ao carregar detalhes do papel. Tente novamente mais tarde.'
+    })
+  } finally {
+    loadingDetails.value = false
+  }
 }
 
 const showAddItemModal = () => {
@@ -163,16 +148,82 @@ const closeModal = () => {
   showModal.value = false
 }
 
-const handleAddPermissao = (permissao) => {
+// Vincula uma permissão a um papel
+const handleAddPermissao = async (permissao: IPapelPermissao) => {
   if (selectedPapel.value) {
-    selectedPapel.value.permissoesIds.push(permissao.id)
+    try {
+      await papeisService.vincularPermissao(selectedPapel.value.id, permissao.id)
+      
+      // Recarrega os detalhes do papel para atualizar a lista
+      await selectPapel(selectedPapel.value)
+      
+      showNotification({
+        type: 'success',
+        message: 'Permissão vinculada com sucesso!'
+      })
+    } catch (error) {
+      console.error('Erro ao vincular permissão:', error)
+      showNotification({
+        type: 'error',
+        message: 'Erro ao vincular permissão. Tente novamente mais tarde.'
+      })
+    }
   }
   closeModal()
 }
 
-const desvincularPermissao = (permissaoId) => {
-  if (selectedPapel.value && confirm('Desvincular esta permissão?')) {
-    selectedPapel.value.permissoesIds = selectedPapel.value.permissoesIds.filter(id => id !== permissaoId)
+// Remove uma permissão de um papel
+const desvincularPermissao = async (permissaoId: string) => {
+  if (selectedPapel.value && confirm('Tem certeza que deseja desvincular esta permissão?')) {
+    try {
+      await papeisService.desvincularPermissao(selectedPapel.value.id, permissaoId)
+      
+      // Recarrega os detalhes do papel para atualizar a lista
+      await selectPapel(selectedPapel.value)
+      
+      showNotification({
+        type: 'success',
+        message: 'Permissão desvinculada com sucesso!'
+      })
+    } catch (error) {
+      console.error('Erro ao desvincular permissão:', error)
+      showNotification({
+        type: 'error',
+        message: 'Erro ao desvincular permissão. Tente novamente mais tarde.'
+      })
+    }
   }
 }
+
+onMounted(loadPapeis)
 </script>
+
+<style scoped>
+.item-description {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+.empty-state i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+</style>

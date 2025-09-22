@@ -1,8 +1,8 @@
 import type { ApiResponse, PagedResponse } from '@/types/api/base/responses'
-import type { IPermissao, IPermissaoList, PermissaoFilter } from '../types'
+import type { IPermissao, IPermissaoFilter } from '../types'
 import { BaseHttpService } from '@/services/base/BaseHttpService'
 
-export class PermissoesService extends BaseHttpService<IPermissao, PermissaoFilter> {
+export class PermissoesService extends BaseHttpService<IPermissao, IPermissaoFilter> {
   private static instance: PermissoesService
 
   private constructor() {
@@ -16,7 +16,7 @@ export class PermissoesService extends BaseHttpService<IPermissao, PermissaoFilt
     return PermissoesService.instance
   }
 
-  public async listarPaginado(filter: PermissaoFilter): Promise<PagedResponse<IPermissaoList>> {
+  public async listarPaginado(filter: IPermissaoFilter): Promise<PagedResponse<IPermissao>> {
     return this.getGrid(filter)
   }
 

@@ -41,30 +41,50 @@
   </Modal>
 </template>
 
-<script setup>
-import { ref, onMounted } from "vue"
-import Modal from "../common/Modal.vue"
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import Modal from '../common/Modal.vue'
 
-const props = defineProps({
-  title: String,
-  availableItems: Array,
-  showLimite: Boolean
-})
+interface AvailableItem {
+  id: string
+  nome: string
+  key: string
+  descricao: string
+  limite?: number
+  [key: string]: any
+}
 
-const emit = defineEmits(["save", "close"])
-const modalRef = ref(null)
+interface ModalRef {
+  startLoading: (message: string) => void
+  stopLoading: () => void
+  showError: (message: string) => void
+  showSuccess: (message: string) => void
+}
+
+const props = defineProps<{
+  title?: string
+  availableItems: AvailableItem[]
+  showLimite?: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'save', item: AvailableItem): void
+  (e: 'close'): void
+}>()
+
+const modalRef = ref<ModalRef | null>(null)
 const loading = ref(false)
-const selectedItemId = ref("")
-const limite = ref(1) // Valor inicial definido aqui
+const selectedItemId = ref<string>('')
+const limite = ref(1)
 
 onMounted(async () => {
   try {
-    modalRef.value?.startLoading("Carregando itens disponíveis...")
+    modalRef.value?.startLoading('Carregando itens disponíveis...')
     // Simula carregamento inicial
     await new Promise(resolve => setTimeout(resolve, 2000))
     modalRef.value?.stopLoading()
   } catch (error) {
-    modalRef.value?.showError("Erro ao carregar itens")
+    modalRef.value?.showError('Erro ao carregar itens')
     modalRef.value?.stopLoading()
   }
 })
@@ -73,28 +93,32 @@ const handleSubmit = async () => {
   if (!selectedItemId.value) return
   
   try {
-    modalRef.value?.startLoading("Adicionando item...")
+    modalRef.value?.startLoading('Adicionando item...')
     // Simula chamada à API
     await new Promise(resolve => setTimeout(resolve, 2000))
     
     const selectedItem = props.availableItems.find(item => item.id === selectedItemId.value)
+    if (!selectedItem) return
+    
     const itemData = { ...selectedItem }
     
     if (props.showLimite) {
       itemData.limite = limite.value
     }
     
-    modalRef.value?.showSuccess("Item adicionado com sucesso!")
+    modalRef.value?.showSuccess('Item adicionado com sucesso!')
     
     setTimeout(() => {
-      emit("save", itemData)
-      emit("close")
+      emit('save', itemData)
+      emit('close')
     }, 1000)
 
   } catch (error) {
-    modalRef.value?.showError("Erro ao adicionar item")
+    modalRef.value?.showError('Erro ao adicionar item')
   } finally {
     modalRef.value?.stopLoading()
   }
 }
+
+
 </script>

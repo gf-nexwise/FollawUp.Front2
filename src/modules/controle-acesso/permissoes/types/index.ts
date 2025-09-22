@@ -6,9 +6,6 @@ export interface IPermissao {
     ativo: boolean;
 }
 
-export interface IPermissaoFilter {
-    page?: number;
-    pageSize?: number;
-    sort?: string;
-    search?: string;
-}
+export interface IPermissaoList extends IPermissao {}
+
+export { IPermissaoFilter } from './filters'
