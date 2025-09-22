@@ -105,10 +105,6 @@ const pageSize = ref<number>(10);
 const totalItems = ref<number>(0);
 const currentSort = ref<SortInfo>({ field: "nome", direction: "asc" }); // Default sort by nome
 
-// Detalhes da funcionalidade selecionada
-const selectedFuncionalidade = ref<IFuncionalidade | null>(null);
-const showDetails = ref<boolean>(false);
-
 // Função para visualizar detalhes
 const hideFormHandler = () => {
   showForm.value = false;
@@ -178,25 +174,6 @@ const loadFuncionalidades = async (): Promise<void> => {
     });
   } finally {
     loading.value = false;
-  }
-};
-
-const deleteFuncionalidade = async (item: IFuncionalidade): Promise<void> => {
-  if (confirm("Tem certeza que deseja excluir esta funcionalidade?")) {
-    try {
-      await funcionalidadesService.excluir(item.id);
-      showNotification({
-        type: "success",
-        message: "Funcionalidade excluída com sucesso!",
-      });
-      await loadFuncionalidades();
-    } catch (error) {
-      console.error("Erro ao excluir funcionalidade:", error);
-      showNotification({
-        type: "error",
-        message: "Erro ao excluir funcionalidade. Tente novamente mais tarde.",
-      });
-    }
   }
 };
 
