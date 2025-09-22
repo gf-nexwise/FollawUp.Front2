@@ -86,7 +86,7 @@ const { showNotification } = useNotification()
 const papeisService = PapeisService.getInstance()
 
 // Estado do componente
-const papeis = ref<IPapelSelection[]>() // Inicializa como array vazio
+const papeis = ref<IPapelSelection[]>([]) // Inicializa como array vazio
 const selectedPapel = ref<IPapelDetalhe | null>(null)
 const permissoes = ref<IPapelPermissao[]>([])
 const showModal = ref(false)
@@ -128,7 +128,7 @@ const selectPapel = async (papel: ListItem) => {
   try {
     loadingDetails.value = true
     const response = await papeisService.buscarPorId(papel.id.toString())
-    selectedPapel.value = response.data
+    selectedPapel.value = response as IPapelDetalhe
   } catch (error) {
     console.error('Erro ao carregar detalhes do papel:', error)
     showNotification({

@@ -3,233 +3,232 @@
     <div class="card">
       <div class="card-header">
         <h3 class="card-title">
-          <i class="fas fa-user-tag"></i> Papéis Cadastrados
+          <i class="fas fa-user-tag"></i> Papéis
         </h3>
-        <button type="button" class="btn btn-primary" @click="showFormHandler()">
-          <i class="fas fa-plus"></i> Novo Papel
-        </button>
+        <div class="card-tools">
+          <button type="button" class="btn btn-primary" @click="showFormHandler()">
+            <i class="fas fa-plus"></i> Novo Papel
+          </button>
+        </div>
       </div>
       <div class="card-body">
-        <table class="grid-table">
-          <thead>
-            <tr>
-              <th style="width: 30%">Nome</th>
-              <th style="width: 30%">Descrição</th>
-              <th style="width: 20%">Status</th>
-              <th style="width: 20%">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="papel in paginatedPapeis" :key="papel.id">
-              <td>{{ papel.nome }}</td>
-              <td>{{ papel.descricao }}</td>
-              <td>
-                <span :class="['status-badge', papel.ativo ? 'active' : 'inactive']">
-                  {{ papel.ativo ? 'Ativo' : 'Inativo' }}
-                </span>
-              </td>
-              <td class="action-buttons">
-                <button class="edit-btn" title="Editar" @click="showFormHandler(papel)">
-                  <i class="fas fa-edit"></i>
-                </button>
-                <button class="delete-btn" title="Excluir" @click="deletePapel(papel.id)">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- Paginação -->
-        <div class="pagination-container">
-          <div class="pagination-info">
-            <div class="items-per-page">
-              <span>Itens por página:</span>
-              <select 
-                v-model="pageSize" 
-                class="page-size-select"
-                @change="handlePageSizeChange($event.target.value)"
-              >
-                <option v-for="size in pageSizeOptions" :key="size" :value="size">
-                  {{ size }}
-                </option>
-              </select>
-            </div>
-            <span class="items-count">
-              Mostrando {{ startItem }} - {{ endItem }} de {{ totalItems }} itens
-            </span>
-          </div>
-          
-          <div class="pagination-controls">
-            <button 
-              class="pagination-btn" 
-              :disabled="currentPage === 1" 
-              @click="currentPage = 1"
-              title="Primeira página"
-            >
-              <i class="fas fa-angle-double-left"></i>
-            </button>
-            <button 
-              class="pagination-btn" 
-              :disabled="currentPage === 1" 
-              @click="currentPage--"
-              title="Página anterior"
-            >
-              <i class="fas fa-angle-left"></i>
-            </button>
-            
-            <div class="pagination-pages">
-              <span>Página {{ currentPage }} de {{ totalPages }}</span>
-            </div>
-            
-            <button 
-              class="pagination-btn" 
-              :disabled="currentPage === totalPages" 
-              @click="currentPage++"
-              title="Próxima página"
-            >
-              <i class="fas fa-angle-right"></i>
-            </button>
-            <button 
-              class="pagination-btn" 
-              :disabled="currentPage === totalPages" 
-              @click="currentPage = totalPages"
-              title="Última página"
-            >
-              <i class="fas fa-angle-double-right"></i>
-            </button>
-          </div>
-        </div>
+        <PaginatedGrid
+          :items="papeis"
+          :columns="columns"
+          :loading="loading"
+          :loading-text="'Carregando...'"
+          :current-page="currentPage"
+          :total-pages="Math.ceil(totalItems / pageSize)"
+          :total-items="totalItems"
+          :items-per-page="pageSize"
+          :sort="currentSort"
+          :actions="['edit', 'view']"
+          @view="visualizarDetalhe"
+          @edit="showFormHandler"
+          @page-change="handlePageChange"
+          @sort="handleSort"
+          @update:items-per-page="handleItemsPerPage"
+        />
       </div>
     </div>
 
     <FormModal
       v-if="showForm"
-      :title="isEditing ? 'Editar Papel' : 'Novo Papel'"
+      :title="getModalTitle"
+      :mode="formMode"
+      :loading="loadingModal"
       @close="hideFormHandler"
       @save="handleSubmit"
     >
       <form @submit.prevent="handleSubmit">
-        <div class="form-group">
-          <label class="form-label">Nome do Papel</label>
-          <input v-model="formData.nome" type="text" class="form-control" required>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nome do Papel</label>
+            <input v-model="formData.nome" type="text" class="form-control" :disabled="formMode === 'view'" required>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Descrição</label>
-          <input v-model="formData.descricao" type="text" class="form-control">
+          <input v-model="formData.descricao" type="text" class="form-control" :disabled="formMode === 'view'">
         </div>
-        <div class="form-group">
-          <label class="form-label">Status</label>
-          <select v-model="formData.ativo" class="form-control form-select">
-            <option :value="true">Ativo</option>
-            <option :value="false">Inativo</option>
-          </select>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <div class="form-check">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                v-model="formData.ativo"
+                :disabled="formMode === 'view'"
+              />
+              <label class="form-check-label">Ativo</label>
+            </div>
+          </div>
+        </div>
+        <div v-if="formMode === 'view' && formData.permissions" class="form-row">
+          <div class="form-group">
+            <label class="form-label">Permissões Vinculadas</label>
+            <ul class="permissions-list">
+              <li v-for="permission in formData.permissions" :key="permission.id">
+                {{ permission.nome }} ({{ permission.key }})
+              </li>
+            </ul>
+          </div>
         </div>
       </form>
     </FormModal>
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
 import FormModal from '@/components/modals/FormModal.vue'
+import PaginatedGrid from '@/components/ui/Grid/PaginatedGrid.vue'
+import { useNotification } from '@/composables/useNotification'
+import type { Column } from '@/types/grid'
+import type { SortInfo } from '@/types/api/base/filters'
+import { PapeisService } from '@/modules/controle-acesso/papeis/services/PapeisService'
+import type { IPapelBase } from '@/modules/controle-acesso/papeis/types'
+import type { IUpsertRoleRequest, IRoleDetalheDto } from '@/modules/controle-acesso/papeis/types/dtos'
 
-// Paginação
-const currentPage = ref(1)
-const pageSize = ref(10)
-const pageSizeOptions = [10, 25, 50, 100]
+const { showNotification } = useNotification()
+const papeisService = PapeisService.getInstance()
 
-const totalItems = computed(() => papeis.value.length)
-const totalPages = computed(() => Math.ceil(totalItems.value / pageSize.value))
-const startItem = computed(() => ((currentPage.value - 1) * pageSize.value) + 1)
-const endItem = computed(() => Math.min(currentPage.value * pageSize.value, totalItems.value))
-
-const handlePageSizeChange = (newSize) => {
-  pageSize.value = Number(newSize)
-  currentPage.value = 1 // Reset to first page when changing page size
-}
-
-const paginatedPapeis = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return papeis.value.slice(start, end)
-})
-
-const papeis = ref([
-  {
-    id: 1,
-    nome: 'Advogado(a) Gestor(a)',
-    descricao: 'Supervisiona uma equipe...',
-    ativo: true,
-    permissoesIds: [2, 4, 6, 8]
-  },
-  {
-    id: 2,
-    nome: 'Advogado(a) Parceiro(a)',
-    descricao: 'Atua em casos específicos.',
-    ativo: true,
-    permissoesIds: [2, 4]
-  }
-])
-
-const showForm = ref(false)
-const isEditing = ref(false)
-const formData = ref({
-  id: null,
+// Estado do componente
+const papeis = ref<IPapelBase[]>([])
+const loading = ref<boolean>(false)
+const showForm = ref<boolean>(false)
+const loadingModal = ref<boolean>(false)
+const currentPage = ref<number>(1)
+const formMode = ref<'edit' | 'view'>('edit')
+const formData = ref<IUpsertRoleRequest & Partial<IRoleDetalheDto>>({
   nome: '',
   descricao: '',
   ativo: true
 })
+const pageSize = ref<number>(10)
+const totalItems = ref<number>(0)
+const currentSort = ref<SortInfo>({ field: 'nome', direction: 'asc' })
 
-const showFormHandler = (papel = null) => {
-  showForm.value = true
+// Computed para título do modal
+const getModalTitle = computed(() => {
+  if (formMode.value === 'view') return 'Detalhes do Papel'
+  return formData.value.id ? 'Editar Papel' : 'Novo Papel'
+})
+
+// Definição das colunas
+const columns = ref<Column[]>([
+  { field: 'nome', label: 'Nome', width: '40%', sortable: true },
+  { field: 'descricao', label: 'Descrição', width: '35%', sortable: true },
+  { field: 'ativo', label: 'Status', type: 'status', width: '25%', sortable: true }
+])
+
+// Função para visualizar detalhes
+const visualizarDetalhe = async (item: IPapelBase) => {
+  try {
+    loadingModal.value = true
+    formMode.value = 'view'
+    const response = await papeisService.buscarPorId(item.id)
+    formData.value = { ...response.data }
+    showForm.value = true
+  } catch (error) {
+    console.error('Erro ao carregar detalhes do papel:', error)
+    showNotification({
+      type: 'error',
+      message: 'Erro ao carregar detalhes do papel. Tente novamente mais tarde.'
+    })
+  } finally {
+    loadingModal.value = false
+  }
+}
+
+// Função para abrir formulário
+const showFormHandler = (papel?: IPapelBase) => {
+  formMode.value = 'edit'
   if (papel) {
-    isEditing.value = true
     formData.value = { ...papel }
   } else {
-    isEditing.value = false
     formData.value = {
-      id: null,
       nome: '',
       descricao: '',
       ativo: true
     }
   }
+  showForm.value = true
 }
 
+// Função para fechar o modal
 const hideFormHandler = () => {
   showForm.value = false
-  isEditing.value = false
   formData.value = {
-    id: null,
     nome: '',
     descricao: '',
     ativo: true
   }
 }
 
-const handleSubmit = () => {
-  if (isEditing.value) {
-    const index = papeis.value.findIndex(p => p.id === formData.value.id)
-    if (index !== -1) {
-      papeis.value[index] = { ...formData.value }
-    }
-  } else {
-    const newPapel = {
-      ...formData.value,
-      id: Date.now(),
-      permissoesIds: []
-    }
-    papeis.value.push(newPapel)
+// Função para submeter o formulário
+const handleSubmit = async () => {
+  try {
+    loadingModal.value = true
+    await papeisService.upsert(formData.value)
+    hideFormHandler()
+    loadPapeis()
+    showNotification({
+      type: 'success',
+      message: `Papel ${formData.value.id ? 'atualizado' : 'criado'} com sucesso!`
+    })
+  } catch (error) {
+    console.error('Erro ao salvar papel:', error)
+    showNotification({
+      type: 'error',
+      message: 'Erro ao salvar papel. Tente novamente mais tarde.'
+    })
+  } finally {
+    loadingModal.value = false
   }
-  hideFormHandler()
 }
 
-const deletePapel = (id) => {
-  if (confirm('Tem certeza que deseja excluir este papel?')) {
-    papeis.value = papeis.value.filter(p => p.id !== id)
+const handleSort = (sort: SortInfo): void => {
+  currentSort.value = sort
+  loadPapeis()
+}
+
+const handlePageChange = (page: number): void => {
+  currentPage.value = page
+  loadPapeis()
+}
+
+const handleItemsPerPage = (value: number): void => {
+  pageSize.value = value
+  currentPage.value = 1
+  loadPapeis()
+}
+
+const loadPapeis = async (): Promise<void> => {
+  try {
+    loading.value = true
+    const response = await papeisService.listarPaginado({
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      sortField: currentSort.value.field || 'nome',
+      sortDirection: currentSort.value.direction || 'asc'
+    })
+    
+    papeis.value = response.items
+    totalItems.value = response.totalItems
+  } catch (error) {
+    console.error('Erro ao carregar papéis:', error)
+    showNotification({
+      type: 'error',
+      message: 'Erro ao carregar papéis. Tente novamente mais tarde.'
+    })
+  } finally {
+    loading.value = false
   }
 }
+
+onMounted(loadPapeis)
 </script>
 
 <style scoped>
@@ -237,5 +236,55 @@ const deletePapel = (id) => {
   display: flex;
   gap: 0.5rem;
   justify-content: center;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+}
+
+.card-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card-tools {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+  flex: 1;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.permissions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.permissions-list li {
+  padding: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.permissions-list li:last-child {
+  border-bottom: none;
 }
 </style>

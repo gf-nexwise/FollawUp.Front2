@@ -32,28 +32,29 @@
   </teleport>
 </template>
 
-<script setup lang="ts">
+<script lang="ts">
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 
-
-
-const props = defineProps({
-  title: {
-    type: String,
-    required: true
+export default defineComponent({
+  name: 'FormModal',
+  props: {
+    title: {
+      type: String,
+      required: true
+    },
+    mode: {
+      type: String as PropType<'view' | 'edit' | 'add'>,
+      required: true,
+      validator: (value: string) => ['view', 'edit', 'add'].includes(value)
+    },
+    loading: {
+      type: Boolean,
+      default: false
+    }
   },
-  mode: {
-    type: String as PropType<'view' | 'edit' | 'add'>,
-    required: true,
-    validator: (value: string) => ['view', 'edit', 'add'].includes(value)
-  },
-  loading: {
-    type: Boolean,
-    default: false
-  }
+  emits: ['save', 'close']
 });
-
-defineEmits(['save', 'close']);
 </script>
 
 <style scoped>

@@ -145,9 +145,10 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { computed, ref, useAttrs } from 'vue'
+<script lang="ts">
+import { computed, ref, defineComponent } from 'vue'
 import type { Column } from '@/types/grid'
+import type { PropType } from 'vue'
 
 interface SortInfo {
   field: string;
@@ -156,87 +157,115 @@ interface SortInfo {
 
 type ActionType = 'view' | 'edit' | 'delete';
 
-const props = withDefaults(defineProps<{
-  items: any[];
-  columns: Column[];
-  loading?: boolean;
-  loadingText?: string;
-  currentPage?: number;
-  totalPages?: number;
-  totalItems?: number;
-  itemsPerPage?: number;
-  sort?: SortInfo;
-  actions?: ActionType[];
-}>(), {
-  loading: false,
-  loadingText: 'Carregando...',
-  currentPage: 1,
-  totalPages: 1,
-  totalItems: 0,
-  itemsPerPage: 10,
-  sort: () => ({ field: '', direction: 'asc' as const }),
-  actions: () => []
-})
+export default defineComponent({
+  name: 'PaginatedGrid',
+  props: {
+    items: {
+      type: Array as PropType<any[]>,
+      required: true
+    },
+    columns: {
+      type: Array as PropType<Column[]>,
+      required: true
+    },
+    loading: {
+      type: Boolean,
+      default: false
+    },
+    loadingText: {
+      type: String,
+      default: 'Carregando...'
+    },
+    currentPage: {
+      type: Number,
+      default: 1
+    },
+    totalPages: {
+      type: Number,
+      default: 1
+    },
+    totalItems: {
+      type: Number,
+      default: 0
+    },
+    itemsPerPage: {
+      type: Number,
+      default: 10
+    },
+    sort: {
+      type: Object as PropType<SortInfo>,
+      default: () => ({ field: '', direction: 'asc' })
+    },
+    actions: {
+      type: Array as PropType<ActionType[]>,
+      default: () => []
+    }
+  },
+  emits: ['edit', 'delete', 'view', 'page-change', 'sort', 'update:itemsPerPage'],
+  setup(props, { emit }) {
+    const perPageLocal = ref(props.itemsPerPage)
+    const currentSort = computed(() => props.sort || { field: '', direction: 'asc' as const })
 
-const emit = defineEmits<{
-  (e: 'edit', item: any): void;
-  (e: 'delete', item: any): void;
-  (e: 'view', item: any): void;
-  (e: 'page-change', page: number): void;
-  (e: 'sort', sort: SortInfo): void;
-  (e: 'update:itemsPerPage', value: number): void;
-}>()
+    // Computed para adicionar a coluna de ações quando necessário
+    const effectiveColumns = computed(() => {
+      if (!props.actions?.length) return props.columns
 
-const perPageLocal = ref(props.itemsPerPage)
-const currentSort = computed(() => props.sort || { field: '', direction: 'asc' as const })
+      // Ajusta as larguras das colunas originais
+      const adjustedColumns = props.columns.map(col => {
+        const originalWidth = parseInt(col.width as string) || 0
+        return {
+          ...col,
+          width: `${Math.floor(originalWidth * 0.85)}%` // Reduz 15% para a coluna de ações
+        }
+      })
 
-// Computed para adicionar a coluna de ações quando necessário
-const effectiveColumns = computed(() => {
-  if (!props.actions?.length) return props.columns
+      // Adiciona a coluna de ações
+      return [
+        ...adjustedColumns,
+        {
+          field: 'actions',
+          label: 'Ações',
+          type: 'actions' as const,
+          width: '15%'
+        }
+      ]
+    })
 
-  // Ajusta as larguras das colunas originais
-  const adjustedColumns = props.columns.map(col => {
-    const originalWidth = parseInt(col.width as string) || 0
+    const handlePerPageChange = () => {
+      emit('update:itemsPerPage', perPageLocal.value)
+      if (props.currentPage > 1) {
+        emit('page-change', 1)
+      }
+    }
+
+    const isSortable = (column: Column): boolean => {
+      return column.field != null && column.type !== 'actions' && column.sortable !== false
+    }
+
+    const handleSort = (column: Column) => {
+      if (!isSortable(column) || !column.field) return
+
+      const newDirection = !currentSort.value || currentSort.value.field !== column.field
+        ? 'asc'
+        : currentSort.value.direction === 'asc'
+          ? 'desc'
+          : 'asc'
+
+      emit('sort', { field: column.field, direction: newDirection })
+    }
+
     return {
-      ...col,
-      width: `${Math.floor(originalWidth * 0.85)}%` // Reduz 15% para a coluna de ações
+      props,
+      emit,
+      perPageLocal,
+      currentSort,
+      effectiveColumns,
+      handlePerPageChange,
+      isSortable,
+      handleSort
     }
-  })
-
-  // Adiciona a coluna de ações
-  return [
-    ...adjustedColumns,
-    {
-      field: 'actions',
-      label: 'Ações',
-      type: 'actions' as const,
-      width: '15%'
-    }
-  ]
-})
-
-const handlePerPageChange = () => {
-  emit('update:itemsPerPage', perPageLocal.value)
-  if (props.currentPage > 1) {
-    emit('page-change', 1)
   }
-}
-
-const isSortable = (column: Column): boolean => {
-  return column.field != null && column.type !== 'actions' && column.sortable !== false
-}
-
-const handleSort = (column: Column) => {
-  if (!isSortable(column) || !column.field) return
-
-  const newDirection = !currentSort.value || currentSort.value.field !== column.field
-    ? 'asc'
-    : currentSort.value.direction === 'asc'
-      ? 'desc'
-      : 'asc'
-
-  emit('sort', { field: column.field, direction: newDirection })
-}
+});
 </script>
 
 <style scoped>

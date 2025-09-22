@@ -1,8 +1,9 @@
 import type { ApiResponse, PagedResponse } from '@/types/api/base/responses'
 import type { IPapelBase, IPapelDetalhe, IPapelSelection, PapelFilter } from '../types'
+import type { IUpsertRoleRequest, IRoleDetalheDto } from '../types/dtos'
 import { BaseHttpService } from '@/services/base/BaseHttpService'
 
-export class PapeisService extends BaseHttpService<IPapelDetalhe, PapelFilter> {
+export class PapeisService extends BaseHttpService<IPapelBase, PapelFilter> {
   private static instance: PapeisService
   private readonly baseUrl: string
 
@@ -22,24 +23,26 @@ export class PapeisService extends BaseHttpService<IPapelDetalhe, PapelFilter> {
     return this.getGrid(filter)
   }
 
-  public async buscarPorId(id: string): Promise<IPapelDetalhe> {
-    if (typeof id !== 'string') {
-      throw new Error('ID do papel deve ser um GUID')
-    }
+  public async buscarPorId(id: string): Promise<ApiResponse<IPapelBase>> {
     const response = await this.getById(id)
-    return response.data
+    return response
   }
 
   public async listarSelection(): Promise<IPapelSelection[]> {
-    const response = await this.http.get<ApiResponse<IPapelSelection[]>>(`${this.baseUrl}/selection`)
+    const response = await this.http.get(`${this.baseUrl}/selection`, this.getRequestConfig())
     return response.data
   }
 
   public async vincularPermissao(papelId: string, permissaoId: string): Promise<void> {
-    await this.http.post(`${this.baseUrl}/${papelId}/permissoes/${permissaoId}`)
+    await this.http.post(`${this.baseUrl}/${papelId}/permissoes/${permissaoId}`, {}, this.getRequestConfig())
   }
 
   public async desvincularPermissao(papelId: string, permissaoId: string): Promise<void> {
-    await this.http.delete(`${this.baseUrl}/${papelId}/permissoes/${permissaoId}`)
+    await this.http.delete(`${this.baseUrl}/${papelId}/permissoes/${permissaoId}`, this.getRequestConfig())
+  }
+
+  public async upsert(papel: IUpsertRoleRequest): Promise<IRoleDetalheDto> {
+    const response = await this.http.post(this.baseUrl, papel, this.getRequestConfig())
+    return response.data
   }
 }
