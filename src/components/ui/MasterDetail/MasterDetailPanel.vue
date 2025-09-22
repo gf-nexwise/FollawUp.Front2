@@ -25,6 +25,12 @@
                   <h4>{{ getItemTitle(item) }}</h4>
                   <p v-if="getItemDescription(item)">{{ getItemDescription(item) }}</p>
                 </div>
+                <span 
+                  v-if="showStatus && item.hasOwnProperty('ativo')" 
+                  :class="['status-badge', item.ativo ? 'active' : 'inactive']"
+                >
+                  {{ item.ativo ? 'Ativo' : 'Inativo' }}
+                </span>
               </slot>
             </li>
           </template>
@@ -128,6 +134,7 @@ const props = withDefaults(defineProps<Props>(), {
   keyField: 'id',
   titleField: 'nome',
   descriptionField: 'descricao',
+  showStatus: true,
   showAddButton: false,
   addButtonText: 'Adicionar',
   emptyStateTitle: 'Selecione um item',
@@ -165,121 +172,168 @@ const handleSelect = (item: BaseItem) => {
 <style scoped>
 .master-detail {
   display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 1rem;
-  height: 100%;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 2rem;
+  height: calc(100vh - 200px);
 }
 
-.master-panel, .detail-panel {
-  background: #fff;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+.master-panel,
+.detail-panel {
+  background: var(--white);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-header {
-  padding: 1rem;
-  border-bottom: 1px solid #eee;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--gray-200);
+  background: var(--gray-50);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .panel-title {
-  margin: 0;
   font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gray-900);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 10px;
+  margin: 0;
 }
 
 .panel-body {
-  padding: 1rem;
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex-grow: 1;
 }
 
 .master-list {
   list-style: none;
-  padding: 0;
   margin: 0;
+  padding: 0;
 }
 
 .master-item {
-  padding: 1rem;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  margin-bottom: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--gray-200);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s ease;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-left: 4px solid transparent;
 }
 
 .master-item:hover {
-  background: #f8f9fa;
+  background: var(--gray-50);
 }
 
 .master-item.active {
-  border-color: var(--primary);
   background: var(--primary-light);
+  border-left-color: var(--primary);
+}
+
+.master-item:last-child {
+  border-bottom: none;
 }
 
 .master-info h4 {
-  margin: 0;
+  margin: 0 0 4px 0;
   font-size: 1rem;
+  font-weight: 600;
+  color: var(--gray-900);
 }
 
 .master-info p {
-  margin: 0.5rem 0 0;
-  font-size: 0.9rem;
-  color: #666;
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--gray-600);
 }
 
 .status-badge {
-  font-size: 0.8rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 1rem;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .status-badge.active {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: #e8f5e8;
+  color: var(--success);
 }
 
 .status-badge.inactive {
-  background: #ffebee;
-  color: #c62828;
+  background: #fff3e0;
+  color: var(--warning);
 }
 
-.empty-state, .loading-state {
+.empty-state {
   text-align: center;
-  padding: 2rem;
-  color: #666;
+  padding: 3rem;
+  color: var(--gray-500);
+}
+
+.empty-state i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--gray-700);
+}
+
+.empty-state p {
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
 }
 
 .loading-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--gray-500);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1rem;
 }
 
-.empty-state i {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-}
-
 .breadcrumb {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 10px;
   font-size: 0.9rem;
-  color: #666;
-  margin-bottom: 0.5rem;
+  color: var(--gray-600);
+  margin-bottom: 1rem;
+}
+
+.breadcrumb i {
+  font-size: 0.8rem;
+  color: var(--gray-400);
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
 }
 
 .detail-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--gray-900);
   margin: 0;
-  font-size: 1.2rem;
 }
 
 .items-list {
@@ -290,10 +344,11 @@ const handleSelect = (item: BaseItem) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  margin-bottom: 0.5rem;
+  padding: 12px 16px;
+  background: var(--gray-50);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  border-left: 4px solid var(--primary);
 }
 
 .item-info {
@@ -302,22 +357,42 @@ const handleSelect = (item: BaseItem) => {
 
 .item-title {
   font-weight: 500;
+  color: var(--gray-900);
+  margin-bottom: 2px;
 }
 
 .item-subtitle {
-  font-size: 0.9rem;
-  color: #666;
+  font-size: 0.85rem;
+  color: var(--gray-600);
 }
 
 .item-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 8px;
+  align-items: center;
+}
+
+.item-value {
+  background: var(--primary);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .empty-list {
   text-align: center;
-  padding: 1rem;
-  color: #666;
+  padding: 3rem;
+  color: var(--gray-500);
   font-size: 0.9rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .master-detail {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
 }
 </style>

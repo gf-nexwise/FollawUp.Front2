@@ -12,17 +12,9 @@
       empty-state-description="Escolha um plano à esquerda para gerenciar preços."
       detail-header-title="Gerenciar Preços"
       :show-add-button="false"
+      :show-status="true"
       @select="selectPlan"
     >
-      <template #master-item="{ item }">
-        <div class="master-info">
-          <h4>{{ item.nome }}</h4>
-          <p v-if="item.descricao">{{ item.descricao }}</p>
-        </div>
-        <span :class="['status-badge', item.ativo ? 'active' : 'inactive']">
-          {{ item.ativo ? 'Ativo' : 'Inativo' }}
-        </span>
-      </template>
 
       <template #detail-content>
         <div v-if="!selectedPlan.precos || selectedPlan.precos.length === 0" class="empty-state">
