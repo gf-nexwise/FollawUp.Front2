@@ -37,82 +37,97 @@
   </teleport>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
+<script lang="ts">
+import { ref, computed, defineComponent } from 'vue'
 import Spinner from './Spinner.vue'
 
-// Props
-const props = defineProps({
-  visible: {
-    type: Boolean,
-    default: false
+interface FeedbackState {
+  show: boolean
+  type: 'success' | 'error'
+  message: string
+  timeout: ReturnType<typeof setTimeout> | null
+}
+
+export default defineComponent({
+  name: 'Modal',
+  components: {
+    Spinner
   },
-  title: {
-    type: String,
-    default: ''
+  props: {
+    visible: {
+      type: Boolean,
+      default: false
+    },
+    title: {
+      type: String,
+      default: ''
+    }
+  },
+  emits: ['close', 'loading-change'],
+  setup(props, { emit }) {
+    // Estado local
+    const loading = ref(false)
+    const loadingMessage = ref('')
+    const feedback = ref<FeedbackState>({
+      show: false,
+      type: 'success',
+      message: '',
+      timeout: null
+    })
+
+    // Computed
+    const isVisible = computed(() => props.visible)
+
+    // Métodos
+    const handleClose = () => {
+      if (!loading.value) {
+        emit('close')
+      }
+    }
+
+    // Métodos expostos para controle de loading e feedback
+    const startLoading = (message = 'Carregando...') => {
+      loading.value = true
+      loadingMessage.value = message
+      emit('loading-change', true)
+    }
+
+    const stopLoading = () => {
+      loading.value = false
+      loadingMessage.value = ''
+      emit('loading-change', false)
+    }
+
+    const showFeedback = (type: 'success' | 'error', message: string, duration = 3000) => {
+      if (feedback.value.timeout) {
+        clearTimeout(feedback.value.timeout)
+      }
+
+      feedback.value = {
+        show: true,
+        type,
+        message,
+        timeout: setTimeout(() => {
+          feedback.value.show = false
+        }, duration)
+      }
+    }
+
+    const showSuccess = (message: string) => showFeedback('success', message)
+    const showError = (message: string) => showFeedback('error', message)
+
+    return {
+      loading,
+      loadingMessage,
+      feedback,
+      isVisible,
+      handleClose,
+      startLoading,
+      stopLoading,
+      showSuccess,
+      showError
+    }
   }
-})
-
-// Emits
-const emit = defineEmits(['close', 'loading-change'])
-
-// Estado local
-const loading = ref(false)
-const loadingMessage = ref('')
-const feedback = ref({
-  show: false,
-  type: 'success',
-  message: '',
-  timeout: null
-})
-
-// Computed
-const isVisible = computed(() => props.visible)
-
-// Métodos
-const handleClose = () => {
-  if (!loading.value) {
-    emit('close')
-  }
-}
-
-// Métodos expostos para controle de loading e feedback
-const startLoading = (message = 'Carregando...') => {
-  loading.value = true
-  loadingMessage.value = message
-  emit('loading-change', true)
-}
-
-const stopLoading = () => {
-  loading.value = false
-  loadingMessage.value = ''
-  emit('loading-change', false)
-}
-
-const showFeedback = (type, message, duration = 3000) => {
-  if (feedback.value.timeout) {
-    clearTimeout(feedback.value.timeout)
-  }
-
-  feedback.value = {
-    show: true,
-    type,
-    message,
-    timeout: setTimeout(() => {
-      feedback.value.show = false
-    }, duration)
-  }
-}
-
-const showSuccess = (message) => showFeedback('success', message)
-const showError = (message) => showFeedback('error', message)
-
-// Expõe métodos para uso externo
-defineExpose({
-  startLoading,
-  stopLoading,
-  showSuccess,
-  showError
 })
 </script>
 

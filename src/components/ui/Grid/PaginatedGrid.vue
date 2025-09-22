@@ -9,7 +9,7 @@
       <thead>
         <tr>
           <th 
-            v-for="col in columns" 
+            v-for="col in effectiveColumns" 
             :key="col.field || col.type"
             :style="{ width: col.width }"
             :class="{ sortable: isSortable(col), active: currentSort?.field === col.field }"
@@ -28,7 +28,7 @@
       </thead>
       <tbody>
         <tr v-for="(item, index) in items" :key="index">
-          <td v-for="col in columns" :key="col.field || col.type">
+          <td v-for="col in effectiveColumns" :key="col.field || col.type">
             <!-- Status cell -->
             <template v-if="col.type === 'status'">
               <span 
@@ -43,15 +43,25 @@
             <template v-else-if="col.type === 'actions'">
               <div class="actions">
                 <button 
+                  v-if="props.actions.includes('view')"
+                  class="btn btn-sm btn-outline-secondary" 
+                  @click="emit('view', item)"
+                  title="Visualizar"
+                >
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button 
+                  v-if="props.actions.includes('edit')"
                   class="btn btn-sm btn-outline-primary" 
-                  @click="$emit('edit', item)"
+                  @click="emit('edit', item)"
                   title="Editar"
                 >
                   <i class="fas fa-edit"></i>
                 </button>
                 <button 
+                  v-if="props.actions.includes('delete')"
                   class="btn btn-sm btn-outline-danger" 
-                  @click="$emit('delete', item)"
+                  @click="emit('delete', item)"
                   title="Excluir"
                 >
                   <i class="fas fa-trash"></i>
@@ -61,7 +71,8 @@
             
             <!-- Default cell -->
             <template v-else>
-              {{ col.formatter ? col.formatter(item[col.field || '']) : item[col.field || ''] }}
+              <span v-if="col.formatter" v-html="col.formatter(item)"></span>
+              <span v-else>{{ item[col.field || ''] }}</span>
             </template>
           </td>
         </tr>
@@ -93,7 +104,7 @@
         <button 
           class="btn btn-sm" 
           :disabled="currentPage === 1"
-          @click="$emit('page-change', 1)"
+          @click="emit('page-change', 1)"
           title="Primeira página"
         >
           <i class="fas fa-angle-double-left"></i>
@@ -102,7 +113,7 @@
         <button 
           class="btn btn-sm" 
           :disabled="currentPage === 1"
-          @click="$emit('page-change', currentPage - 1)"
+          @click="emit('page-change', currentPage - 1)"
           title="Página anterior"
         >
           <i class="fas fa-angle-left"></i>
@@ -115,7 +126,7 @@
         <button 
           class="btn btn-sm" 
           :disabled="currentPage === totalPages"
-          @click="$emit('page-change', currentPage + 1)"
+          @click="emit('page-change', currentPage + 1)"
           title="Próxima página"
         >
           <i class="fas fa-angle-right"></i>
@@ -124,7 +135,7 @@
         <button 
           class="btn btn-sm" 
           :disabled="currentPage === totalPages"
-          @click="$emit('page-change', totalPages)"
+          @click="emit('page-change', totalPages)"
           title="Última página"
         >
           <i class="fas fa-angle-double-right"></i>
@@ -135,16 +146,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-
+import { computed, ref, useAttrs } from 'vue'
 import type { Column } from '@/types/grid'
+
+defineOptions({
+  name: 'PaginatedGrid'
+})
 
 interface SortInfo {
   field: string;
   direction: 'asc' | 'desc';
 }
 
-interface Props {
+type ActionType = 'view' | 'edit' | 'delete';
+
+const props = withDefaults(defineProps<{
   items: any[];
   columns: Column[];
   loading?: boolean;
@@ -154,52 +170,77 @@ interface Props {
   totalItems?: number;
   itemsPerPage?: number;
   sort?: SortInfo;
-}
-
-interface Emits {
-  (e: 'edit', item: any): void;
-  (e: 'delete', item: any): void;
-  (e: 'page-change', page: number): void;
-  (e: 'sort', sort: SortInfo): void;
-  (e: 'update:itemsPerPage', value: number): void;
-}
-
-const props = withDefaults(defineProps<Props>(), {
+  actions?: ActionType[];
+}>(), {
   loading: false,
   loadingText: 'Carregando...',
   currentPage: 1,
   totalPages: 1,
+  totalItems: 0,
   itemsPerPage: 10,
-  totalItems: 0
-});
+  sort: () => ({ field: '', direction: 'asc' as const }),
+  actions: () => []
+})
 
-const emit = defineEmits<Emits>();
+const emit = defineEmits<{
+  (e: 'edit', item: any): void;
+  (e: 'delete', item: any): void;
+  (e: 'view', item: any): void;
+  (e: 'page-change', page: number): void;
+  (e: 'sort', sort: SortInfo): void;
+  (e: 'update:itemsPerPage', value: number): void;
+}>()
 
-const perPageLocal = ref(props.itemsPerPage);
-const currentSort = computed(() => props.sort || { field: '', direction: 'asc' });
+const perPageLocal = ref(props.itemsPerPage)
+const currentSort = computed(() => props.sort || { field: '', direction: 'asc' as const })
+
+// Computed para adicionar a coluna de ações quando necessário
+const effectiveColumns = computed(() => {
+  if (!props.actions?.length) return props.columns
+
+  // Ajusta as larguras das colunas originais
+  const adjustedColumns = props.columns.map(col => {
+    const originalWidth = parseInt(col.width as string) || 0
+    return {
+      ...col,
+      width: `${Math.floor(originalWidth * 0.85)}%` // Reduz 15% para a coluna de ações
+    }
+  })
+
+  // Adiciona a coluna de ações
+  return [
+    ...adjustedColumns,
+    {
+      field: 'actions',
+      label: 'Ações',
+      type: 'actions' as const,
+      width: '15%'
+    }
+  ]
+})
 
 const handlePerPageChange = () => {
-  emit('update:itemsPerPage', perPageLocal.value);
+  emit('update:itemsPerPage', perPageLocal.value)
   if (props.currentPage > 1) {
-    emit('page-change', 1);
+    emit('page-change', 1)
   }
-};
+}
 
 const isSortable = (column: Column): boolean => {
-  return column.field != null && column.type !== 'actions' && column.sortable !== false;
-};
+  return column.field != null && column.type !== 'actions' && column.sortable !== false
+}
 
 const handleSort = (column: Column) => {
-  if (!isSortable(column) || !column.field) return;
+  if (!isSortable(column) || !column.field) return
 
   const newDirection = !currentSort.value || currentSort.value.field !== column.field
     ? 'asc'
     : currentSort.value.direction === 'asc'
       ? 'desc'
-      : 'asc';
+      : 'asc'
 
-  emit('sort', { field: column.field, direction: newDirection });
-};
+  emit('sort', { field: column.field, direction: newDirection })
+}
 </script>
 
 <style scoped>

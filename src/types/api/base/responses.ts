@@ -11,9 +11,10 @@ export interface PagedResponse<T> {
 export interface ApiResponse<T = any> {
   success: boolean;
   data: T;
-  message?: string;
-  errors?: string[];
+  messages?: string[];
 }
+
+export interface PagedApiResponse<T> extends ApiResponse<PagedResponse<T>> {}
 
 export interface ApiError {
   message: string;

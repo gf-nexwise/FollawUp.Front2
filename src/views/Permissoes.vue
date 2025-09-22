@@ -10,96 +10,22 @@
         </button>
       </div>
       <div class="card-body">
-        <table class="grid-table">
-          <thead>
-            <tr>
-              <th style="width: 30%">Nome</th>
-              <th style="width: 30%">Key</th>
-              <th style="width: 20%">Status</th>
-              <th style="width: 20%">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="permissao in paginatedPermissoes" :key="permissao.id">
-              <td>{{ permissao.nome }}</td>
-              <td>{{ permissao.key }}</td>
-              <td>
-                <span :class="['status-badge', permissao.ativo ? 'active' : 'inactive']">
-                  {{ permissao.ativo ? 'Ativo' : 'Inativo' }}
-                </span>
-              </td>
-              <td class="action-buttons">
-                <button class="edit-btn" title="Editar" @click="showFormHandler(permissao)">
-                  <i class="fas fa-edit"></i>
-                </button>
-                <button class="delete-btn" title="Excluir" @click="deletePermissao(permissao.id)">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- Paginação -->
-        <div class="pagination-container">
-          <div class="pagination-info">
-            <div class="items-per-page">
-              <span>Itens por página:</span>
-              <select 
-                v-model="pageSize" 
-                class="page-size-select"
-                @change="handlePageSizeChange($event.target.value)"
-              >
-                <option v-for="size in pageSizeOptions" :key="size" :value="size">
-                  {{ size }}
-                </option>
-              </select>
-            </div>
-            <span class="items-count">
-              Mostrando {{ startItem }} - {{ endItem }} de {{ totalItems }} itens
-            </span>
-          </div>
-          
-          <div class="pagination-controls">
-            <button 
-              class="pagination-btn" 
-              :disabled="currentPage === 1" 
-              @click="currentPage = 1"
-              title="Primeira página"
-            >
-              <i class="fas fa-angle-double-left"></i>
-            </button>
-            <button 
-              class="pagination-btn" 
-              :disabled="currentPage === 1" 
-              @click="currentPage--"
-              title="Página anterior"
-            >
-              <i class="fas fa-angle-left"></i>
-            </button>
-            
-            <div class="pagination-pages">
-              <span>Página {{ currentPage }} de {{ totalPages }}</span>
-            </div>
-            
-            <button 
-              class="pagination-btn" 
-              :disabled="currentPage === totalPages" 
-              @click="currentPage++"
-              title="Próxima página"
-            >
-              <i class="fas fa-angle-right"></i>
-            </button>
-            <button 
-              class="pagination-btn" 
-              :disabled="currentPage === totalPages" 
-              @click="currentPage = totalPages"
-              title="Última página"
-            >
-              <i class="fas fa-angle-double-right"></i>
-            </button>
-          </div>
-        </div>
+        <PaginatedGrid
+          :items="permissoes"
+          :columns="columns"
+          :loading="loading"
+          :loading-text="'Carregando...'"
+          :current-page="currentPage"
+          :total-pages="Math.ceil(totalItems / pageSize)"
+          :total-items="totalItems"
+          :items-per-page="pageSize"
+          :sort="currentSort"
+          @edit="showFormHandler"
+          @delete="deletePermissao"
+          @page-change="handlePageChange"
+          @sort="handleSort"
+          @update:items-per-page="handleItemsPerPage"
+        />
       </div>
     </div>
 
@@ -136,51 +62,41 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue'
 import FormModal from '@/components/modals/FormModal.vue'
+import PaginatedGrid from '@/components/ui/Grid/PaginatedGrid.vue'
+import { useNotification } from '@/composables/useNotification'
+import type { Column } from '@/types/grid'
+import type { SortInfo } from '@/types/api/base/filters'
 
-// Paginação
-const currentPage = ref(1)
-const pageSize = ref(10)
-const pageSizeOptions = [10, 25, 50, 100]
+import { PermissoesService } from '@/modules/controle-acesso/permissoes/services/PermissoesService'
+import type { IPermissao } from '@/modules/controle-acesso/permissoes/types'
 
-const totalItems = computed(() => permissoes.value.length)
-const totalPages = computed(() => Math.ceil(totalItems.value / pageSize.value))
-const startItem = computed(() => ((currentPage.value - 1) * pageSize.value) + 1)
-const endItem = computed(() => Math.min(currentPage.value * pageSize.value, totalItems.value))
+const { showNotification } = useNotification()
+const permissoesService = PermissoesService.getInstance()
 
-const handlePageSizeChange = (newSize) => {
-  pageSize.value = Number(newSize)
-  currentPage.value = 1 // Reset to first page when changing page size
-}
-
-const paginatedPermissoes = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return permissoes.value.slice(start, end)
-})
-
-// Dados da tabela
-const columns = [
-  { field: 'nome', label: 'Nome' },
-  { field: 'key', label: 'Key' },
-  { field: 'ativo', label: 'Status', type: 'status' },
-  { type: 'actions', label: 'Ações' }
+const columns: Column[] = [
+  { field: 'nome', label: 'Nome', width: '30%' },
+  { field: 'key', label: 'Key', width: '30%' },
+  { field: 'ativo', label: 'Status', type: 'status', width: '20%' },
+  { type: 'actions', label: 'Ações', width: '20%' }
 ]
 
-const permissoes = ref([
-  { id: 1, nome: 'Adicionar Assunto', key: 'processos:adicionar-assunto', descricao: '...', ativo: true },
-  { id: 2, nome: 'Listar Processos', key: 'processos:listar', descricao: '...', ativo: true },
-  { id: 4, nome: 'Criar Caso', key: 'casos:criar', descricao: '...', ativo: true },
-  { id: 6, nome: 'Desvincular Processo', key: 'casos:desvincular-processo', descricao: '...', ativo: true },
-  { id: 8, nome: 'Criar Acesso', key: 'acesso:criar', descricao: '...', ativo: true },
-  { id: 9, nome: 'Obter Acesso', key: 'acesso:obter', descricao: '...', ativo: true }
-])
+const permissoes = ref<IPermissao[]>([])
+const loading = ref<boolean>(false)
+const showForm = ref<boolean>(false)
+const isEditing = ref<boolean>(false)
+const currentPage = ref<number>(1)
+const pageSize = ref<number>(10)
+const totalItems = ref<number>(0)
+const currentSort = ref<SortInfo>({ field: 'nome', direction: 'asc' })
 
-const showForm = ref(false)
-const isEditing = ref(false)
-const formData = ref({
+interface FormData extends Omit<IPermissao, 'id'> {
+  id: number | null;
+}
+
+const formData = ref<FormData>({
   id: null,
   nome: '',
   key: '',
@@ -188,7 +104,7 @@ const formData = ref({
   ativo: true
 })
 
-const showFormHandler = (permissao = null) => {
+const showFormHandler = (permissao: IPermissao | null = null): void => {
   showForm.value = true
   if (permissao) {
     isEditing.value = true
@@ -205,7 +121,7 @@ const showFormHandler = (permissao = null) => {
   }
 }
 
-const hideFormHandler = () => {
+const hideFormHandler = (): void => {
   showForm.value = false
   isEditing.value = false
   formData.value = {
@@ -217,27 +133,91 @@ const hideFormHandler = () => {
   }
 }
 
-const handleSubmit = () => {
-  if (isEditing.value) {
-    const index = permissoes.value.findIndex(p => p.id === formData.value.id)
-    if (index !== -1) {
-      permissoes.value[index] = { ...formData.value }
+const handleSubmit = async (): Promise<void> => {
+  try {
+    const { id, ...permissaoData } = formData.value
+    
+    if (isEditing.value && id !== null) {
+      await permissoesService.atualizar(id, permissaoData)
+      showNotification({
+        type: 'success',
+        message: 'Permissão atualizada com sucesso!'
+      })
+    } else {
+      await permissoesService.criar(permissaoData)
+      showNotification({
+        type: 'success',
+        message: 'Permissão criada com sucesso!'
+      })
     }
-  } else {
-    const newPermissao = {
-      ...formData.value,
-      id: Date.now()
-    }
-    permissoes.value.push(newPermissao)
+    await loadPermissoes()
+    hideFormHandler()
+  } catch (error) {
+    console.error('Erro ao salvar permissão:', error)
+    showNotification({
+      type: 'error',
+      message: 'Erro ao salvar permissão. Tente novamente mais tarde.'
+    })
   }
-  hideFormHandler()
 }
 
-const deletePermissao = (id) => {
-  if (confirm('Tem certeza que deseja excluir esta permissão?')) {
-    permissoes.value = permissoes.value.filter(p => p.id !== id)
+const handleSort = (sort: SortInfo): void => {
+  currentSort.value = sort;
+}
+
+const handlePageChange = (page: number): void => {
+  currentPage.value = page;
+}
+
+const handleItemsPerPage = (value: number): void => {
+  pageSize.value = value;
+  currentPage.value = 1;
+  loadPermissoes();
+}
+
+const loadPermissoes = async (): Promise<void> => {
+  try {
+    loading.value = true
+    const response = await permissoesService.listarPaginado({
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      sort: currentSort.value ? (currentSort.value.direction === 'desc' ? `-${currentSort.value.field}` : currentSort.value.field) : undefined
+    })
+    permissoes.value = response.items
+    totalItems.value = response.totalItems
+  } catch (error) {
+    console.error('Erro ao carregar permissões:', error)
+    showNotification({
+      type: 'error',
+      message: 'Erro ao carregar permissões. Tente novamente mais tarde.'
+    })
+  } finally {
+    loading.value = false
   }
 }
+
+const deletePermissao = async (item: IPermissao): Promise<void> => {
+  if (confirm('Tem certeza que deseja excluir esta permissão?')) {
+    try {
+      await permissoesService.excluir(item.id)
+      showNotification({
+        type: 'success',
+        message: 'Permissão excluída com sucesso!'
+      })
+      await loadPermissoes()
+    } catch (error) {
+      console.error('Erro ao excluir permissão:', error)
+      showNotification({
+        type: 'error',
+        message: 'Erro ao excluir permissão. Tente novamente mais tarde.'
+      })
+    }
+  }
+}
+
+// Set up watchers and mounted hook
+watch([currentPage, currentSort], loadPermissoes)
+onMounted(loadPermissoes)
 </script>
 
 <style scoped>

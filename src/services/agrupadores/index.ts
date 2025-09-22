@@ -13,14 +13,15 @@ class AgrupadoresService extends BaseHttpService<IAgrupador, AgrupadorFilter> {
       page: 1,
       pageSize: 1000, // Um número grande para trazer todos
       tipo,
-      sort: 'nome' // Ordenação padrão
+      sortField: 'nome',
+      sortDirection: 'asc'
     });
-    return response.data.items;
+    return response.items;
   }
 
   async listarPaginado(filter: AgrupadorFilter): Promise<PagedResponse<IAgrupador>> {
     const response = await this.getGrid(filter);
-    return response.data;
+    return response;
   }
 
   async criar(agrupador: Omit<IAgrupador, 'id'>): Promise<IAgrupador> {

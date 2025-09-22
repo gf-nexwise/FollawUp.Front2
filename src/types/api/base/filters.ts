@@ -1,7 +1,8 @@
 export interface BaseFilter {
   page: number;
   pageSize: number;
-  sort?: string;
+  sortField?: string;
+  sortDirection?: 'asc' | 'desc';
   searchTerm?: string;
 }
 

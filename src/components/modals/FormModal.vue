@@ -20,7 +20,7 @@
   </teleport>
 </template>
 
-<script setup lang="ts">
+<script lang="ts">
 interface Props {
   title: string;
 }
@@ -30,6 +30,17 @@ interface Emits {
   (e: 'close'): void;
 }
 
-defineProps<Props>();
-defineEmits<Emits>();
+export default {
+  name: 'FormModal',
+  props: {
+    title: {
+      type: String,
+      required: true
+    }
+  },
+  emits: ['save', 'close'],
+  setup() {
+    return {}
+  }
+}
 </script>

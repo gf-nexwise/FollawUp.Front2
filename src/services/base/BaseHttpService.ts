@@ -59,11 +59,17 @@ export abstract class BaseHttpService<T = any, F extends BaseFilter = BaseFilter
   }
 
   // Métodos para listagem paginada
-  async getGrid(filter: F): Promise<ApiResponse<PagedResponse<T>>> {
+  async getGrid(filter: F): Promise<PagedResponse<T>> {
+    const sort = filter.sortField 
+      ? filter.sortDirection === 'desc'
+        ? `-${filter.sortField}`
+        : filter.sortField
+      : undefined;
+
     const params = {
       page: filter.page,
       pageSize: filter.pageSize,
-      sort: filter.sort,
+      sort,
       searchTerm: filter.searchTerm,
     };
 

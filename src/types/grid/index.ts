@@ -6,6 +6,7 @@ export interface Column {
   sortable?: boolean;
   align?: 'left' | 'center' | 'right';
   formatter?: (value: any) => string;
+  template?: (item: any) => string;
 }
 
 export interface GridProps<T = any> {

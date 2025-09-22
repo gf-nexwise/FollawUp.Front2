@@ -210,7 +210,8 @@ const loadAgrupadores = async (): Promise<void> => {
     const response = await agrupadoresService.listarPaginado({
       page: currentPage.value,
       pageSize: pageSize.value,
-      sort: currentSort.value ? (currentSort.value.direction === 'desc' ? `-${currentSort.value.field}` : currentSort.value.field) : undefined,
+      sortField: currentSort.value?.field,
+      sortDirection: currentSort.value?.direction,
       tipo: activeTab.value
     })
     console.log('Resposta recebida:', response)

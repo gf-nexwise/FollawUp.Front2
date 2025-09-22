@@ -166,22 +166,26 @@ class AgrupadoresService extends BaseHttpService<IAgrupador, AgrupadorFilter> {
       console.log('Mock data disponível:', mockAgrupadores)
       
       await new Promise(resolve => setTimeout(resolve, 500))
-      const { page = 1, pageSize = 10, sort, tipo } = filter
+      const { page = 1, pageSize = 10, sortField, sortDirection, tipo } = filter
       
       // Filtra os agrupadores pelo tipo
       let lista = mockAgrupadores[tipo as TipoAgrupador] || []
       console.log('Lista filtrada por tipo:', lista)
       
       // Aplica ordenação se houver
-      if (sort) {
-        const [field, direction] = sort.startsWith('-') 
-          ? [sort.substring(1), 'desc'] 
-          : [sort, 'asc'];
+      if (sortField) {
+        lista = [...lista].sort((a, b) => {
+          const valueA = (a as any)[sortField];
+          const valueB = (b as any)[sortField];
+          return sortDirection === 'asc' 
+            ? valueA > valueB ? 1 : -1
+            : valueA < valueB ? 1 : -1;
+        });
         
         lista = [...lista].sort((a, b) => {
-          const valueA = (a as any)[field];
-          const valueB = (b as any)[field];
-          return direction === 'asc' 
+          const valueA = (a as any)[sortField];
+          const valueB = (b as any)[sortField];
+          return sortDirection === 'asc' 
             ? valueA > valueB ? 1 : -1
             : valueA < valueB ? 1 : -1;
         });

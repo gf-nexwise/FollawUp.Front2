@@ -14,15 +14,20 @@
   </transition>
 </template>
 
-<script setup>
-defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
-  message: {
-    type: String,
-    default: ""
+<script lang="ts">
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+  name: 'Spinner',
+  props: {
+    show: {
+      type: Boolean,
+      default: false
+    },
+    message: {
+      type: String,
+      default: ""
+    }
   }
 })
 </script>
