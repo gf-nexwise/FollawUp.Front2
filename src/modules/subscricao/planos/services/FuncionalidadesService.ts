@@ -20,9 +20,8 @@ export class FuncionalidadesService extends BaseHttpService<IFuncionalidade, Fun
     return this.getGrid(filter)
   }
 
-  public async buscarPorId(id: string): Promise<IFuncionalidade> {
-    const response = await this.getById(id)
-    return response.data
+  public async buscarPorId(id: string): Promise<ApiResponse<IFuncionalidade>> {
+    return this.getById(id)
   }
 
   public async criar(funcionalidade: Omit<IFuncionalidade, 'id' | 'key' | 'versao'>): Promise<IFuncionalidade> {
