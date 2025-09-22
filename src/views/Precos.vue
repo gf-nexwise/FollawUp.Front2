@@ -1,125 +1,97 @@
 <template>
   <div>
-    <div class="master-detail">
-      <div class="master-panel">
-        <div class="panel-header">
-          <h3 class="panel-title">
-            <i class="fas fa-layer-group"></i> Planos
-          </h3>
+    <MasterDetailPanel
+      :items="planos"
+      :selected-item="selectedPlan"
+      :loading="loading"
+      master-title="Planos"
+      master-icon="fas fa-layer-group"
+      detail-title="Preços"
+      detail-icon="fas fa-dollar-sign"
+      empty-state-title="Selecione um Plano"
+      empty-state-description="Escolha um plano à esquerda para gerenciar preços."
+      detail-header-title="Gerenciar Preços"
+      :show-add-button="false"
+      @select="selectPlan"
+    >
+      <template #master-item="{ item }">
+        <div class="master-info">
+          <h4>{{ item.nome }}</h4>
+          <p v-if="item.descricao">{{ item.descricao }}</p>
         </div>
-        <div class="panel-body">
-          <ul class="plan-list">
-            <li
-              v-for="plan in planos"
-              :key="plan.id"
-              :class="['plan-item', { active: selectedPlan && selectedPlan.id === plan.id }]"
-              @click="selectPlan(plan)"
-            >
-              <div class="plan-info">
-                <h4>{{ plan.nome }}</h4>
-                <p>{{ plan.descricao }}</p>
-              </div>
-              <span :class="['status-badge', plan.ativo ? 'active' : 'inactive']">
-                {{ plan.ativo ? 'Ativo' : 'Inativo' }}
-              </span>
-            </li>
-          </ul>
-        </div>
-      </div>
-      
-      <div class="detail-panel">
-        <div class="panel-header">
-          <h3 class="panel-title">
-            <i class="fas fa-dollar-sign"></i> Preços
-          </h3>
-        </div>
-        <div class="panel-body">
-          <div v-if="!selectedPlan" class="empty-state">
-            <i class="fas fa-mouse-pointer"></i>
-            <h3>Selecione um Plano</h3>
-            <p>Escolha um plano à esquerda para gerenciar preços.</p>
-          </div>
-          
-          <div v-else>
-            <div class="detail-header">
-              <div>
-                <div class="breadcrumb">
-                  <span>{{ selectedPlan.nome }}</span>
-                  <i class="fas fa-chevron-right"></i>
-                  <span>Preços</span>
-                </div>
-                <h2 class="detail-title">Gerenciar Preços</h2>
-              </div>
-            </div>
-            
-            <div v-if="!selectedPlan.precos || selectedPlan.precos.length === 0" class="empty-state">
-              <i class="fas fa-dollar-sign"></i>
-              <h3>Nenhum preço configurado.</h3>
-            </div>
-            
-            <div v-else class="items-list">
-              <div
-                v-for="preco in selectedPlan.precos"
-                :key="preco.id"
-                class="item-row"
-              >
-                <div class="item-info">
-                  <div class="item-title">{{ preco.recorrencia }}</div>
-                </div>
-                <div class="item-actions">
-                  <span class="item-value">R$ {{ preco.valor.toFixed(2) }}</span>
-                  <button
-                    class="btn btn-secondary btn-sm"
-                    @click="showEditPriceModal(preco)"
-                  >
-                    <i class="fas fa-edit"></i>
-                  </button>
-                  <button
-                    class="btn btn-danger btn-sm"
-                    @click="removePrice(preco.id)"
-                  >
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
+        <span :class="['status-badge', item.ativo ? 'active' : 'inactive']">
+          {{ item.ativo ? 'Ativo' : 'Inativo' }}
+        </span>
+      </template>
 
-            <div style="margin-top: 2rem; border-top: 1px solid var(--gray-200); padding-top: 1.5rem;">
-              <h3 style="margin-bottom: 1rem;">Adicionar Novo Preço</h3>
-              <form @submit.prevent="handleAddPrice" class="form-grid" style="align-items: flex-end;">
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label class="form-label">Recorrência</label>
-                  <select v-model="newPrice.recorrencia" class="form-control form-select" required>
-                    <option value="">Selecione...</option>
-                    <option value="Mensal">Mensal</option>
-                    <option value="Trimestral">Trimestral</option>
-                    <option value="Semestral">Semestral</option>
-                    <option value="Anual">Anual</option>
-                  </select>
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label class="form-label">Valor (BRL)</label>
-                  <input
-                    v-model.number="newPrice.valor"
-                    type="number"
-                    class="form-control"
-                    placeholder="99.90"
-                    step="0.01"
-                    min="0"
-                    required
-                  >
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                  <button type="submit" class="btn btn-primary" style="width: 100%;">
-                    Adicionar
-                  </button>
-                </div>
-              </form>
+      <template #detail-content>
+        <div v-if="!selectedPlan.precos || selectedPlan.precos.length === 0" class="empty-state">
+          <i class="fas fa-dollar-sign"></i>
+          <h3>Nenhum preço configurado.</h3>
+          <p>Use o formulário abaixo para adicionar preços.</p>
+        </div>
+        
+        <div v-else class="items-list">
+          <div
+            v-for="preco in selectedPlan.precos"
+            :key="preco.id"
+            class="item-row"
+          >
+            <div class="item-info">
+              <div class="item-title">{{ preco.recorrencia }}</div>
+              <div class="item-subtitle">R$ {{ preco.valor.toFixed(2) }}</div>
+            </div>
+            <div class="item-actions">
+              <button
+                class="btn btn-secondary btn-sm"
+                @click="showEditPriceModal(preco)"
+              >
+                <i class="fas fa-edit"></i>
+              </button>
+              <button
+                class="btn btn-danger btn-sm"
+                @click="removePrice(preco.id)"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+
+        <div class="add-price-form">
+          <h3>Adicionar Novo Preço</h3>
+          <form @submit.prevent="handleAddPrice" class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Recorrência</label>
+              <select v-model="newPrice.recorrencia" class="form-control form-select" required>
+                <option value="">Selecione...</option>
+                <option value="Mensal">Mensal</option>
+                <option value="Trimestral">Trimestral</option>
+                <option value="Semestral">Semestral</option>
+                <option value="Anual">Anual</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Valor (BRL)</label>
+              <input
+                v-model.number="newPrice.valor"
+                type="number"
+                class="form-control"
+                placeholder="99.90"
+                step="0.01"
+                min="0"
+                required
+              >
+            </div>
+            <div class="form-group">
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Adicionar
+              </button>
+            </div>
+          </form>
+        </div>
+      </template>
+    </MasterDetailPanel>
 
     <EditPriceModal
       v-if="showModal"
@@ -132,6 +104,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import MasterDetailPanel from '@/components/ui/MasterDetail/MasterDetailPanel.vue'
 import EditPriceModal from '@/components/modals/EditPriceModal.vue'
 
 const planos = ref([
@@ -170,6 +143,7 @@ const planos = ref([
 ])
 
 const selectedPlan = ref(null)
+const loading = ref(false)
 const showModal = ref(false)
 const selectedPrice = ref(null)
 const newPrice = ref({
@@ -235,3 +209,193 @@ onMounted(() => {
   // Component mounted
 })
 </script>
+
+<style scoped>
+.add-price-form {
+  margin-top: 2rem;
+  border-top: 1px solid #eee;
+  padding-top: 1.5rem;
+}
+
+.add-price-form h3 {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.form-group {
+  margin-bottom: 0;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary, #007bff);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-primary {
+  background: var(--primary, #007bff);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark, #0056b3);
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #545b62;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+}
+
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.status-badge {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 1rem;
+}
+
+.status-badge.active {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.inactive {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+.empty-state i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.items-list {
+  margin-top: 1rem;
+}
+
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  transition: all 0.2s;
+}
+
+.item-row:hover {
+  background: #f8f9fa;
+  border-color: #ddd;
+}
+
+.item-info {
+  flex: 1;
+}
+
+.item-title {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.item-subtitle {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.item-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.master-info h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.master-info p {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+</style>
