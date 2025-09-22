@@ -5,6 +5,7 @@
         <h3 class="panel-title">
           <i :class="masterIcon"></i> {{ masterTitle }}
         </h3>
+        <slot name="master-actions"></slot>
       </div>
       <div class="panel-body">
         <div v-if="loading" class="loading-state">
@@ -15,18 +16,20 @@
           <template v-if="items && items.length > 0">
             <li
               v-for="item in items"
-              :key="item.id"
-              :class="['master-item', { active: selectedItem && selectedItem.id === item.id }]"
+              :key="getItemKey(item)"
+              :class="['master-item', { active: selectedItem && getItemKey(selectedItem) === getItemKey(item) }]"
               @click="handleSelect(item)"
             >
-              <div class="master-info">
-                <h4>{{ item.nome }}</h4>
-                <p v-if="item.descricao">{{ item.descricao }}</p>
-              </div>
+              <slot name="master-item" :item="item">
+                <div class="master-info">
+                  <h4>{{ getItemTitle(item) }}</h4>
+                  <p v-if="getItemDescription(item)">{{ getItemDescription(item) }}</p>
+                </div>
+              </slot>
             </li>
           </template>
           <li v-else class="empty-list">
-            <p>Nenhum item encontrado.</p>
+            <p>{{ emptyListText }}</p>
           </li>
         </ul>
       </div>
@@ -37,13 +40,15 @@
         <h3 class="panel-title">
           <i :class="detailIcon"></i> {{ detailTitle }}
         </h3>
-        <button
-          v-if="selectedItem && showAddButton"
-          class="btn btn-primary btn-sm"
-          @click="$emit('add')"
-        >
-          <i class="fas fa-plus"></i> {{ addButtonText }}
-        </button>
+        <slot name="detail-actions" :selected-item="selectedItem">
+          <button
+            v-if="selectedItem && showAddButton"
+            class="btn btn-primary btn-sm"
+            @click="$emit('add')"
+          >
+            <i class="fas fa-plus"></i> {{ addButtonText }}
+          </button>
+        </slot>
       </div>
       <div class="panel-body">
         <div v-if="!selectedItem" class="empty-state">
@@ -53,10 +58,10 @@
         </div>
         
         <div v-else>
-          <div class="detail-header">
+          <div class="detail-header" v-if="showDetailHeader">
             <div>
               <div class="breadcrumb">
-                <span>{{ selectedItem.nome }}</span>
+                <span>{{ getItemTitle(selectedItem) }}</span>
                 <i class="fas fa-chevron-right"></i>
                 <span>{{ detailTitle }}</span>
               </div>
@@ -67,7 +72,13 @@
           <slot 
             name="detail-content" 
             :selected-item="selectedItem"
-          ></slot>
+            :loading="detailLoading"
+          >
+            <div v-if="detailLoading" class="loading-state">
+              <Spinner />
+              <p>Carregando detalhes...</p>
+            </div>
+          </slot>
         </div>
       </div>
     </div>
@@ -82,48 +93,66 @@ export default defineComponent({
 })
 </script>
 
-<script setup lang="ts">
-import { defineProps, defineEmits } from 'vue'
+<script setup lang="ts" generic="T extends Record<string, any>">
+import { defineProps, defineEmits, computed } from 'vue'
 import Spinner from '@/components/common/Spinner.vue'
 
-interface ListItem {
-  id: string
-  nome: string
-  descricao: string
-}
-
 interface Props {
-  items: ListItem[]
-  selectedItem: ListItem | null
+  items: T[]
+  selectedItem: T | null
   masterTitle: string
   masterIcon: string
   detailTitle: string
   detailIcon: string
+  keyField?: string
+  titleField?: string
+  descriptionField?: string
   showStatus?: boolean
   showAddButton?: boolean
   addButtonText?: string
   emptyStateTitle?: string
   emptyStateDescription?: string
+  emptyListText?: string
   detailHeaderTitle?: string
+  showDetailHeader?: boolean
   loading?: boolean
+  detailLoading?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  keyField: 'id',
+  titleField: 'nome',
+  descriptionField: 'descricao',
   showAddButton: false,
   addButtonText: 'Adicionar',
   emptyStateTitle: 'Selecione um item',
   emptyStateDescription: 'Escolha um item à esquerda para ver os detalhes.',
+  emptyListText: 'Nenhum item encontrado.',
   detailHeaderTitle: 'Gerenciar',
-  loading: false
+  showDetailHeader: true,
+  loading: false,
+  detailLoading: false
 })
 
 const emit = defineEmits<{
-  (e: 'select', item: ListItem): void
+  (e: 'select', item: T): void
   (e: 'add'): void
   (e: 'refresh'): void
 }>()
 
-const handleSelect = (item: ListItem) => {
+const getItemKey = (item: T): string => {
+  return String(item[props.keyField])
+}
+
+const getItemTitle = (item: T): string => {
+  return String(item[props.titleField] || '')
+}
+
+const getItemDescription = (item: T): string => {
+  return String(item[props.descriptionField] || '')
+}
+
+const handleSelect = (item: T) => {
   emit('select', item)
 }
 </script>

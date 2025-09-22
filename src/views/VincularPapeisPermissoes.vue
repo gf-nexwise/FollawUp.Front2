@@ -18,35 +18,15 @@
       @add="showAddItemModal"
     >
       <template #detail-content>
-        <div v-if="!papelPermissoes?.length" class="empty-state">
-          <i class="fas fa-shield-alt"></i>
-          <h3>Nenhuma permissão vinculada</h3>
-          <p>Use o botão acima para vincular permissões a este papel.</p>
-        </div>
-        
-        <div v-else class="items-list">
-          <div
-            v-for="permissao in papelPermissoes"
-            :key="permissao.id"
-            class="item-row"
-          >
-            <div class="item-info">
-              <div class="item-title">{{ permissao.nome }}</div>
-              <div class="item-subtitle">{{ permissao.key }}</div>
-              <div v-if="permissao.descricao" class="item-description">
-                {{ permissao.descricao }}
-              </div>
-            </div>
-            <div class="item-actions">
-              <button
-                class="btn btn-danger btn-sm"
-                @click="desvincularPermissao(permissao.id)"
-              >
-                <i class="fas fa-unlink"></i>
-              </button>
-            </div>
-          </div>
-        </div>
+        <DetailContent
+          :loading="loadingDetails"
+          :items="papelPermissoes"
+          :action-loading="loadingAction"
+          empty-state-title="Nenhuma permissão vinculada"
+          empty-state-description="Use o botão acima para vincular permissões a este papel."
+          empty-state-icon="fas fa-shield-alt"
+          @desvincular="desvincularPermissao"
+        />
       </template>
     </MasterDetailPanel>
 
@@ -64,6 +44,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useNotification } from '@/composables/useNotification'
 import MasterDetailPanel from '@/components/ui/MasterDetail/MasterDetailPanel.vue'
+import DetailContent from '@/components/ui/MasterDetail/DetailContent.vue'
 import AddItemModal from '@/components/modals/AddItemModal.vue'
 import { PapeisService } from '@/modules/controle-acesso/papeis/services/PapeisService'
 import type { IPapelSelection, IPapelDetalhe } from '@/modules/controle-acesso/papeis/types'
@@ -92,6 +73,7 @@ const permissoes = ref<IPapelPermissao[]>([])
 const showModal = ref(false)
 const loading = ref(true) // Começa como true para mostrar loading inicial
 const loadingDetails = ref(false)
+const loadingAction = ref(false)
 
 // Computed properties
 const papelPermissoes = computed(() => 
@@ -103,6 +85,20 @@ const availablePermissoes = computed(() => {
   const vinculadas = new Set(papelPermissoes.value.map(p => p.id))
   return permissoes.value.filter(p => !vinculadas.has(p.id))
 })
+
+// Carrega todas as permissões disponíveis
+const loadPermissoes = async () => {
+  try {
+    const permissoesList = await papeisService.listarPermissoesDisponiveis()
+    permissoes.value = permissoesList
+  } catch (error) {
+    console.error('Erro ao carregar permissões:', error)
+    showNotification({
+      type: 'error',
+      message: 'Erro ao carregar permissões. Tente novamente mais tarde.'
+    })
+  }
+}
 
 // Carrega a lista inicial de papéis (apenas ID, Nome e Descrição)
 const loadPapeis = async () => {
@@ -152,6 +148,7 @@ const closeModal = () => {
 const handleAddPermissao = async (permissao: IPapelPermissao) => {
   if (selectedPapel.value) {
     try {
+      loadingAction.value = true
       await papeisService.vincularPermissao(selectedPapel.value.id, permissao.id)
       
       // Recarrega os detalhes do papel para atualizar a lista
@@ -167,6 +164,8 @@ const handleAddPermissao = async (permissao: IPapelPermissao) => {
         type: 'error',
         message: 'Erro ao vincular permissão. Tente novamente mais tarde.'
       })
+    } finally {
+      loadingAction.value = false
     }
   }
   closeModal()
@@ -176,6 +175,7 @@ const handleAddPermissao = async (permissao: IPapelPermissao) => {
 const desvincularPermissao = async (permissaoId: string) => {
   if (selectedPapel.value && confirm('Tem certeza que deseja desvincular esta permissão?')) {
     try {
+      loadingAction.value = true
       await papeisService.desvincularPermissao(selectedPapel.value.id, permissaoId)
       
       // Recarrega os detalhes do papel para atualizar a lista
@@ -191,39 +191,20 @@ const desvincularPermissao = async (permissaoId: string) => {
         type: 'error',
         message: 'Erro ao desvincular permissão. Tente novamente mais tarde.'
       })
+    } finally {
+      loadingAction.value = false
     }
   }
 }
 
-onMounted(loadPapeis)
+onMounted(async () => {
+  await Promise.all([
+    loadPapeis(),
+    loadPermissoes()
+  ])
+})
 </script>
 
 <style scoped>
-.item-description {
-  font-size: 0.85rem;
-  color: #666;
-  margin-top: 0.25rem;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 2rem;
-  color: #666;
-}
-
-.empty-state i {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
-}
-
-.empty-state h3 {
-  margin: 0 0 0.5rem;
-  font-size: 1.1rem;
-}
-
-.empty-state p {
-  margin: 0;
-  font-size: 0.9rem;
-}
+/* Estilos específicos da view, se necessário */
 </style>

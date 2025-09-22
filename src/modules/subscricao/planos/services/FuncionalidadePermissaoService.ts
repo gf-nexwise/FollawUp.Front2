@@ -37,10 +37,15 @@ export class FuncionalidadePermissaoService extends BaseHttpService<IFuncionalid
   }
 
   public async vincularPermissao(funcionalidadeId: string, permissaoId: string): Promise<void> {
-    await this.http.post(`${this.baseUrl}/${funcionalidadeId}/permissoes/${permissaoId}`)
+    await this.http.post(`${this.baseUrl}/${funcionalidadeId}/permissoes/`, {permissaoId})
   }
 
   public async desvincularPermissao(funcionalidadeId: string, permissaoId: string): Promise<void> {
     await this.http.delete(`${this.baseUrl}/${funcionalidadeId}/permissoes/${permissaoId}`)
+  }
+
+  public async listarPermissoesDisponiveis(): Promise<any[]> {
+    const response = await this.http.get('/permissions/selection', this.getRequestConfig())
+    return response.data
   }
 }

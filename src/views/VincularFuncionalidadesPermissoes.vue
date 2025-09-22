@@ -2,17 +2,17 @@
   <div>
     <MasterDetailPanel
       :items="funcionalidades"
-      :selected-item="selectedFunc"
+      :selected-item="selectedFuncionalidade"
+      :loading="loading"
       master-title="Funcionalidades"
-      master-icon="fas fa-puzzle-piece"
+      master-icon="fas fa-cogs"
       detail-title="Permissões"
       detail-icon="fas fa-shield-alt"
-      title-field="nome"
-      description-field="descricao"
       add-button-text="Vincular Permissão"
       empty-state-title="Selecione uma Funcionalidade"
       empty-state-description="Escolha uma funcionalidade à esquerda para gerenciar suas permissões."
       detail-header-title="Gerenciar Permissões"
+      :show-add-button="true"
       @select="selectFuncionalidade"
       @add="showAddItemModal"
     >
@@ -39,6 +39,14 @@
   </div>
 </template>
 
+<script lang="ts">
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+  name: 'VincularFuncionalidadesPermissoes'
+})
+</script>
+
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useNotification } from '@/composables/useNotification'
@@ -52,33 +60,54 @@ import type {
   IFuncionalidadePermissao 
 } from '@/modules/subscricao/planos/types/funcionalidade-permissao'
 
+type ListItem = {
+  id: string | number
+  [key: string]: any
+}
+
 const { showNotification } = useNotification()
-const funcionalidadePermissaoService = FuncionalidadePermissaoService.getInstance()
+const funcionalidadeService = FuncionalidadePermissaoService.getInstance()
 
 // Estado do componente
 const funcionalidades = ref<IFuncionalidadeSelection[]>([])
-const selectedFunc = ref<IFuncionalidadeDetalhe | null>(null)
+const selectedFuncionalidade = ref<IFuncionalidadeDetalhe | null>(null)
 const permissoes = ref<IFuncionalidadePermissao[]>([])
 const showModal = ref(false)
-const loading = ref(false)
+const loading = ref(true)
 const loadingDetails = ref(false)
 const loadingAction = ref(false)
 
+// Computed properties
 const funcionalidadePermissoes = computed(() => 
-  selectedFunc.value?.permissions || []
+  selectedFuncionalidade.value?.permissions || []
 )
 
 const availablePermissoes = computed(() => {
-  if (!selectedFunc.value) return []
-  const vinculadas = new Set(funcionalidadePermissoes.value.map(p => p.id))
-  return permissoes.value.filter(p => !vinculadas.has(p.id))
+  if (!selectedFuncionalidade.value) return []
+  const vinculadas = new Set(funcionalidadePermissoes.value.map((p: IFuncionalidadePermissao) => p.id))
+  return permissoes.value.filter((p: IFuncionalidadePermissao) => !vinculadas.has(p.id))
 })
 
+// Carrega todas as permissões disponíveis
+const loadPermissoes = async () => {
+  try {
+    const permissoesList = await funcionalidadeService.listarPermissoesDisponiveis()
+    permissoes.value = permissoesList
+  } catch (error) {
+    console.error('Erro ao carregar permissões:', error)
+    showNotification({
+      type: 'error',
+      message: 'Erro ao carregar permissões. Tente novamente mais tarde.'
+    })
+  }
+}
+
+// Carrega a lista inicial de funcionalidades
 const loadFuncionalidades = async () => {
   try {
     loading.value = true
-    const response = await funcionalidadePermissaoService.listarSelection()
-    funcionalidades.value = response.data
+    const response = await funcionalidadeService.listarSelection()
+    funcionalidades.value = response.data || response
   } catch (error) {
     console.error('Erro ao carregar funcionalidades:', error)
     showNotification({
@@ -90,11 +119,14 @@ const loadFuncionalidades = async () => {
   }
 }
 
-const selectFuncionalidade = async (funcionalidade: IFuncionalidadeSelection) => {
+// Carrega os detalhes completos de uma funcionalidade específica
+const selectFuncionalidade = async (funcionalidade: ListItem) => {
+  if (!funcionalidade?.id) return
+  
   try {
-    loading.value = true
-    const response = await funcionalidadePermissaoService.buscarPorId(funcionalidade.id)
-    selectedFunc.value = response.data
+    loadingDetails.value = true
+    const response = await funcionalidadeService.buscarPorId(funcionalidade.id.toString())
+    selectedFuncionalidade.value = response.data || response
   } catch (error) {
     console.error('Erro ao carregar detalhes da funcionalidade:', error)
     showNotification({
@@ -102,7 +134,7 @@ const selectFuncionalidade = async (funcionalidade: IFuncionalidadeSelection) =>
       message: 'Erro ao carregar detalhes da funcionalidade. Tente novamente mais tarde.'
     })
   } finally {
-    loading.value = false
+    loadingDetails.value = false
   }
 }
 
@@ -114,11 +146,16 @@ const closeModal = () => {
   showModal.value = false
 }
 
+// Vincula uma permissão a uma funcionalidade
 const handleAddPermissao = async (permissao: IFuncionalidadePermissao) => {
-  if (selectedFunc.value) {
+  if (selectedFuncionalidade.value) {
     try {
-      await funcionalidadePermissaoService.vincularPermissao(selectedFunc.value.id, permissao.id)
-      await selectFuncionalidade(selectedFunc.value)
+      loadingAction.value = true
+      await funcionalidadeService.vincularPermissao(selectedFuncionalidade.value.id, permissao.id)
+      
+      // Recarrega os detalhes da funcionalidade para atualizar a lista
+      await selectFuncionalidade(selectedFuncionalidade.value)
+      
       showNotification({
         type: 'success',
         message: 'Permissão vinculada com sucesso!'
@@ -129,16 +166,23 @@ const handleAddPermissao = async (permissao: IFuncionalidadePermissao) => {
         type: 'error',
         message: 'Erro ao vincular permissão. Tente novamente mais tarde.'
       })
+    } finally {
+      loadingAction.value = false
     }
   }
   closeModal()
 }
 
+// Remove uma permissão de uma funcionalidade
 const desvincularPermissao = async (permissaoId: string) => {
-  if (selectedFunc.value && confirm('Tem certeza que deseja desvincular esta permissão?')) {
+  if (selectedFuncionalidade.value && confirm('Tem certeza que deseja desvincular esta permissão?')) {
     try {
-      await funcionalidadePermissaoService.desvincularPermissao(selectedFunc.value.id, permissaoId)
-      await selectFuncionalidade(selectedFunc.value)
+      loadingAction.value = true
+      await funcionalidadeService.desvincularPermissao(selectedFuncionalidade.value.id, permissaoId)
+      
+      // Recarrega os detalhes da funcionalidade para atualizar a lista
+      await selectFuncionalidade(selectedFuncionalidade.value)
+      
       showNotification({
         type: 'success',
         message: 'Permissão desvinculada com sucesso!'
@@ -149,39 +193,20 @@ const desvincularPermissao = async (permissaoId: string) => {
         type: 'error',
         message: 'Erro ao desvincular permissão. Tente novamente mais tarde.'
       })
+    } finally {
+      loadingAction.value = false
     }
   }
 }
 
-onMounted(loadFuncionalidades)
+onMounted(async () => {
+  await Promise.all([
+    loadFuncionalidades(),
+    loadPermissoes()
+  ])
+})
 </script>
 
 <style scoped>
-.item-description {
-  font-size: 0.85rem;
-  color: #666;
-  margin-top: 0.25rem;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 2rem;
-  color: #666;
-}
-
-.empty-state i {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
-}
-
-.empty-state h3 {
-  margin: 0 0 0.5rem;
-  font-size: 1.1rem;
-}
-
-.empty-state p {
-  margin: 0;
-  font-size: 0.9rem;
-}
+/* Estilos específicos da view, se necessário */
 </style>

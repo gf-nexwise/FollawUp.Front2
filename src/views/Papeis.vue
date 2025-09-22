@@ -129,7 +129,7 @@ const visualizarDetalhe = async (item: IPapelBase) => {
     loadingModal.value = true
     formMode.value = 'view'
     const response = await papeisService.buscarPorId(item.id)
-    formData.value = { ...response.data }
+    formData.value = response
     showForm.value = true
   } catch (error) {
     console.error('Erro ao carregar detalhes do papel:', error)

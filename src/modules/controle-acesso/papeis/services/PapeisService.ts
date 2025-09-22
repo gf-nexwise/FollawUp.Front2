@@ -23,9 +23,9 @@ export class PapeisService extends BaseHttpService<IPapelBase, PapelFilter> {
     return this.getGrid(filter)
   }
 
-  public async buscarPorId(id: string): Promise<ApiResponse<IPapelBase>> {
-    const response = await this.getById(id)
-    return response
+  public async buscarPorId(id: string): Promise<IPapelDetalhe> {
+    const response = await this.http.get(`${this.baseUrl}/${id}`, this.getRequestConfig())
+    return response.data
   }
 
   public async listarSelection(): Promise<IPapelSelection[]> {
@@ -39,6 +39,11 @@ export class PapeisService extends BaseHttpService<IPapelBase, PapelFilter> {
 
   public async desvincularPermissao(papelId: string, permissaoId: string): Promise<void> {
     await this.http.delete(`${this.baseUrl}/${papelId}/permissoes/${permissaoId}`, this.getRequestConfig())
+  }
+
+  public async listarPermissoesDisponiveis(): Promise<any[]> {
+    const response = await this.http.get('/permissions/selection', this.getRequestConfig())
+    return response.data
   }
 
   public async upsert(papel: IUpsertRoleRequest): Promise<IRoleDetalheDto> {
