@@ -4,9 +4,6 @@
       <div class="card-header">
         <h3 class="card-title"><i class="fas fa-puzzle-piece"></i> Funcionalidades</h3>
         <div class="card-tools">
-          <button class="btn btn-primary" @click="showAddModal">
-            <i class="fas fa-plus"></i> Nova Funcionalidade
-          </button>
         </div>
       </div>
       <div class="card-body">
@@ -20,9 +17,8 @@
           :total-items="totalItems"
           :items-per-page="pageSize"
           :sort="currentSort"
-          :actions="['view', 'edit']"
+          :actions="['view']"
           @view="visualizarDetalhe"
-          @edit="showEditModal"
           @page-change="handlePageChange"
           @sort="handleSort"
           @update:items-per-page="handleItemsPerPage"
@@ -33,40 +29,39 @@
     <FormModal
       v-if="showForm"
       :title="getModalTitle"
-      :mode="modalMode"
+      :mode="'view'"
       :loading="loadingModal"
       @close="hideFormHandler"
-      @save="handleSave"
     >
       <form>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Nome</label>
-            <input v-model="formData.nome" type="text" class="form-control" :disabled="modalMode === 'view'" />
+            <input v-model="formData.nome" type="text" class="form-control" disabled />
           </div>
           <div class="form-group">
             <label class="form-label">Categoria</label>
-            <input v-model="formData.categoria" type="text" class="form-control" :disabled="modalMode === 'view'" />
+            <input v-model="formData.categoria" type="text" class="form-control" disabled />
           </div>
         </div>
         <div class="form-group">
           <label class="form-label">Descrição</label>
-          <input v-model="formData.descricao" type="text" class="form-control" :disabled="modalMode === 'view'" />
+          <input v-model="formData.descricao" type="text" class="form-control" disabled />
         </div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Tipo de Limite</label>
-            <input v-model="formData.tipoLimite" type="text" class="form-control" :disabled="modalMode === 'view'" />
+            <input v-model="formData.tipoLimite" type="text" class="form-control" disabled />
           </div>
           <div class="form-group">
             <label class="form-label">Unidade de Medida</label>
-            <input v-model="formData.unidadeMedida" type="text" class="form-control" :disabled="modalMode === 'view'" />
+            <input v-model="formData.unidadeMedida" type="text" class="form-control" disabled />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Ordem</label>
-            <input v-model.number="formData.ordem" type="number" class="form-control" :disabled="modalMode === 'view'" />
+            <input v-model.number="formData.ordem" type="number" class="form-control" disabled />
           </div>
           <div class="form-group">
             <label class="form-label">Status</label>
@@ -75,7 +70,7 @@
                 type="checkbox"
                 class="form-check-input"
                 v-model="formData.ativo"
-                :disabled="modalMode === 'view'"
+                disabled
               />
               <label class="form-check-label">Ativo</label>
             </div>
@@ -87,7 +82,7 @@
                 type="checkbox"
                 class="form-check-input"
                 v-model="formData.visivel"
-                :disabled="modalMode === 'view'"
+                disabled
               />
               <label class="form-check-label">Visível</label>
             </div>
@@ -111,10 +106,7 @@ import { FuncionalidadesService } from "@/modules/subscricao/planos/services/Fun
 import type {
   IFuncionalidade,
   IFuncionalidadeList,
-  FuncionalidadeFilter,
 } from "@/modules/subscricao/planos/types";
-
-
 
 const { showNotification } = useNotification();
 const funcionalidadesService = FuncionalidadesService.getInstance();
@@ -123,7 +115,6 @@ const funcionalidadesService = FuncionalidadesService.getInstance();
 const funcionalidades = ref<IFuncionalidadeList[]>([]);
 const loading = ref<boolean>(false);
 const showForm = ref<boolean>(false);
-const modalMode = ref<'view' | 'edit' | 'add'>('view');
 const currentPage = ref<number>(1);
 const formData = ref<IFuncionalidade>({} as IFuncionalidade);
 const pageSize = ref<number>(10);
@@ -134,47 +125,20 @@ const currentSort = ref<SortInfo>({ field: "nome", direction: "asc" }); // Defau
 const loadingModal = ref(false);
 
 // Computed para título do modal
-const getModalTitle = computed(() => {
-  switch (modalMode.value) {
-    case 'add':
-      return 'Nova Funcionalidade';
-    case 'edit':
-      return 'Editar Funcionalidade';
-    default:
-      return 'Detalhes da Funcionalidade';
-  }
-});
+const getModalTitle = computed(() => 'Detalhes da Funcionalidade');
 
-// Função para abrir modal de adição
-const showAddModal = () => {
-  formData.value = {
-    nome: '',
-    categoria: '',
-    descricao: '',
-    tipoLimite: '',
-    unidadeMedida: '',
-    ordem: 0,
-    ativo: true,
-    visivel: true,
-    key: '',
-  } as IFuncionalidade;
-  modalMode.value = 'add';
-  showForm.value = true;
-};
-
-// Função para abrir modal de edição
-const loadFuncionalidadeAndShowModal = async (item: IFuncionalidade, mode: 'view' | 'edit') => {
+// Função para abrir modal de visualização
+const loadFuncionalidadeAndShowModal = async (item: IFuncionalidade) => {
   try {
     loadingModal.value = true;
     const response = await funcionalidadesService.buscarPorId(item.id);
     formData.value = { ...response.data };
-    modalMode.value = mode;
     showForm.value = true;
   } catch (error) {
-    console.error(`Erro ao carregar ${mode === 'view' ? 'detalhes da' : ''} funcionalidade:`, error);
+    console.error('Erro ao carregar detalhes da funcionalidade:', error);
     showNotification({
       type: "error",
-      message: `Erro ao carregar ${mode === 'view' ? 'detalhes da' : ''} funcionalidade. Tente novamente mais tarde.`,
+      message: "Erro ao carregar detalhes da funcionalidade. Tente novamente mais tarde.",
     });
   } finally {
     loadingModal.value = false;
@@ -182,38 +146,12 @@ const loadFuncionalidadeAndShowModal = async (item: IFuncionalidade, mode: 'view
 };
 
 // Função para visualizar detalhes
-const visualizarDetalhe = (item: IFuncionalidade) => loadFuncionalidadeAndShowModal(item, 'view');
-
-// Função para editar
-const showEditModal = (item: IFuncionalidade) => loadFuncionalidadeAndShowModal(item, 'edit');
-
-// Função para salvar (create/update)
-const handleSave = async () => {
-  try {
-    loadingModal.value = true;
-    await funcionalidadesService.upsert(formData.value);
-    showNotification({
-      type: "success",
-      message: `Funcionalidade ${modalMode.value === 'add' ? 'adicionada' : 'atualizada'} com sucesso!`,
-    });
-    hideFormHandler();
-    await loadFuncionalidades();
-  } catch (error) {
-    console.error("Erro ao salvar funcionalidade:", error);
-    showNotification({
-      type: "error",
-      message: `Erro ao ${modalMode.value === 'add' ? 'adicionar' : 'atualizar'} funcionalidade. Tente novamente mais tarde.`,
-    });
-  } finally {
-    loadingModal.value = false;
-  }
-};
+const visualizarDetalhe = (item: IFuncionalidade) => loadFuncionalidadeAndShowModal(item);
 
 // Função para fechar o modal
 const hideFormHandler = () => {
   showForm.value = false;
   formData.value = {} as IFuncionalidade;
-  modalMode.value = 'view';
 };
 
 
@@ -227,12 +165,12 @@ const columns = ref<Column[]>([
 
 const handleSort = (sort: SortInfo): void => {
   currentSort.value = sort;
-  loadFuncionalidades(); // Recarrega ao mudar a ordenação
+  loadFuncionalidades();
 };
 
 const handlePageChange = (page: number): void => {
   currentPage.value = page;
-  loadFuncionalidades(); // Recarrega ao mudar a página
+  loadFuncionalidades();
 };
 
 const handleItemsPerPage = (value: number): void => {
@@ -251,7 +189,6 @@ const loadFuncionalidades = async (): Promise<void> => {
       sortDirection: currentSort.value.direction || 'asc'
     });
     
-    // O response já vem com o formato { items: [], totalItems: number }
     funcionalidades.value = response.items;
     totalItems.value = response.totalItems;
   } catch (error) {
@@ -265,7 +202,6 @@ const loadFuncionalidades = async (): Promise<void> => {
   }
 };
 
-// Set up watchers and mounted hook
 onMounted(loadFuncionalidades);
 </script>
 

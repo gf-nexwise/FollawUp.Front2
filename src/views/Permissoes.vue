@@ -2,12 +2,8 @@
   <div>
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title">
-          <i class="fas fa-shield-alt"></i> Permissões Cadastradas
-        </h3>
-        <button type="button" class="btn btn-primary" @click="showFormHandler()">
-          <i class="fas fa-plus"></i> Nova Permissão
-        </button>
+        <h3 class="card-title"><i class="fas fa-shield-alt"></i> Permissões</h3>
+        <div class="card-tools"></div>
       </div>
       <div class="card-body">
         <PaginatedGrid
@@ -20,8 +16,8 @@
           :total-items="totalItems"
           :items-per-page="pageSize"
           :sort="currentSort"
-          @edit="showFormHandler"
-          @delete="deletePermissao"
+          :actions="['view']"
+          @view="visualizarDetalhe"
           @page-change="handlePageChange"
           @sort="handleSort"
           @update:items-per-page="handleItemsPerPage"
@@ -31,33 +27,32 @@
 
     <FormModal
       v-if="showForm"
-      :title="isEditing ? 'Editar Permissão' : 'Nova Permissão'"
-      :mode="isEditing ? 'edit' : 'add'"
-      :loading="loading"
+      :title="getModalTitle"
+      :mode="modalMode"
+      :loading="loadingModal"
       @close="hideFormHandler"
-      @save="handleSubmit"
     >
-      <form @submit.prevent="handleSubmit">
+      <form>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Nome</label>
-            <input v-model="formData.nome" type="text" class="form-control" required>
+            <input v-model="formData.nome" type="text" class="form-control" disabled>
           </div>
           <div class="form-group">
             <label class="form-label">Key</label>
-            <input v-model="formData.key" type="text" class="form-control" required placeholder="recurso:acao">
+            <input v-model="formData.key" type="text" class="form-control" disabled>
           </div>
         </div>
         <div class="form-group">
           <label class="form-label">Descrição</label>
-          <input v-model="formData.descricao" type="text" class="form-control">
+          <input v-model="formData.descricao" type="text" class="form-control" disabled>
         </div>
         <div class="form-group">
           <label class="form-label">Status</label>
-          <select v-model="formData.ativo" class="form-control form-select">
-            <option :value="true">Ativo</option>
-            <option :value="false">Inativo</option>
-          </select>
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" v-model="formData.ativo" disabled>
+            <label class="form-check-label">Ativo</label>
+          </div>
         </div>
       </form>
     </FormModal>
@@ -65,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import FormModal from '@/components/modals/FormModal.vue'
 import PaginatedGrid from '@/components/ui/Grid/PaginatedGrid.vue'
 import { useNotification } from '@/composables/useNotification'
@@ -78,97 +73,66 @@ import type { IPermissao } from '@/modules/controle-acesso/permissoes/types'
 const { showNotification } = useNotification()
 const permissoesService = PermissoesService.getInstance()
 
-const columns: Column[] = [
-  { field: 'nome', label: 'Nome', width: '30%' },
-  { field: 'key', label: 'Key', width: '30%' },
-  { field: 'ativo', label: 'Status', type: 'status', width: '20%' },
-  { type: 'actions', label: 'Ações', width: '20%' }
-]
-
+// Estado do componente
 const permissoes = ref<IPermissao[]>([])
 const loading = ref<boolean>(false)
 const showForm = ref<boolean>(false)
-const isEditing = ref<boolean>(false)
+const modalMode = ref<'view'>('view')
 const currentPage = ref<number>(1)
 const pageSize = ref<number>(10)
 const totalItems = ref<number>(0)
 const currentSort = ref<SortInfo>({ field: 'nome', direction: 'asc' })
+const formData = ref<IPermissao>({} as IPermissao)
 
-interface FormData extends Omit<IPermissao, 'id'> {
-  id: number | null;
-}
+// Estado separado para loading do modal
+const loadingModal = ref(false)
 
-const formData = ref<FormData>({
-  id: null,
-  nome: '',
-  key: '',
-  descricao: '',
-  ativo: true
-})
+// Computed para título do modal
+const getModalTitle = computed(() => 'Detalhes da Permissão')
 
-const showFormHandler = (permissao: IPermissao | null = null): void => {
-  showForm.value = true
-  if (permissao) {
-    isEditing.value = true
-    formData.value = { ...permissao }
-  } else {
-    isEditing.value = false
-    formData.value = {
-      id: null,
-      nome: '',
-      key: '',
-      descricao: '',
-      ativo: true
-    }
-  }
-}
+// Definição das colunas
+const columns = ref<Column[]>([
+  { field: 'nome', label: 'Nome', width: '40%', sortable: true },
+  { field: 'key', label: 'Key', width: '35%', sortable: true },
+  { field: 'ativo', label: 'Status', type: 'status', width: '25%', sortable: true }
+])
 
-const hideFormHandler = (): void => {
-  showForm.value = false
-  isEditing.value = false
-  formData.value = {
-    id: null,
-    nome: '',
-    key: '',
-    descricao: '',
-    ativo: true
-  }
-}
-
-const handleSubmit = async (): Promise<void> => {
+const loadPermissaoAndShowModal = async (item: IPermissao) => {
   try {
-    const { id, ...permissaoData } = formData.value
-    
-    if (isEditing.value && id !== null) {
-      await permissoesService.atualizar(id, permissaoData)
-      showNotification({
-        type: 'success',
-        message: 'Permissão atualizada com sucesso!'
-      })
-    } else {
-      await permissoesService.criar(permissaoData)
-      showNotification({
-        type: 'success',
-        message: 'Permissão criada com sucesso!'
-      })
-    }
-    await loadPermissoes()
-    hideFormHandler()
+    loadingModal.value = true;
+    const response = await permissoesService.buscarPorId(item.id.toString());
+    formData.value = { ...response.data };
+    modalMode.value = 'view';
+    showForm.value = true;
   } catch (error) {
-    console.error('Erro ao salvar permissão:', error)
+    console.error('Erro ao carregar detalhes da permissão:', error);
     showNotification({
       type: 'error',
-      message: 'Erro ao salvar permissão. Tente novamente mais tarde.'
-    })
+      message: 'Erro ao carregar detalhes da permissão. Tente novamente mais tarde.',
+    });
+  } finally {
+    loadingModal.value = false;
   }
+}
+
+// Função para visualizar detalhes
+const visualizarDetalhe = (item: IPermissao) => loadPermissaoAndShowModal(item);
+
+// Função para fechar o modal
+const hideFormHandler = () => {
+  showForm.value = false;
+  formData.value = {} as IPermissao;
+  modalMode.value = 'view';
 }
 
 const handleSort = (sort: SortInfo): void => {
   currentSort.value = sort;
+  loadPermissoes();
 }
 
 const handlePageChange = (page: number): void => {
   currentPage.value = page;
+  loadPermissoes();
 }
 
 const handleItemsPerPage = (value: number): void => {
@@ -179,47 +143,29 @@ const handleItemsPerPage = (value: number): void => {
 
 const loadPermissoes = async (): Promise<void> => {
   try {
-    loading.value = true
+    loading.value = true;
     const response = await permissoesService.listarPaginado({
       page: currentPage.value,
       pageSize: pageSize.value,
-      sort: currentSort.value ? (currentSort.value.direction === 'desc' ? `-${currentSort.value.field}` : currentSort.value.field) : undefined
-    })
-    permissoes.value = response.items
-    totalItems.value = response.totalItems
+      sortField: currentSort.value.field || 'nome',
+      sortDirection: currentSort.value.direction || 'asc'
+    });
+    
+    permissoes.value = response.items;
+    totalItems.value = response.totalItems;
   } catch (error) {
-    console.error('Erro ao carregar permissões:', error)
+    console.error('Erro ao carregar permissões:', error);
     showNotification({
       type: 'error',
-      message: 'Erro ao carregar permissões. Tente novamente mais tarde.'
-    })
+      message: 'Erro ao carregar permissões. Tente novamente mais tarde.',
+    });
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-const deletePermissao = async (item: IPermissao): Promise<void> => {
-  if (confirm('Tem certeza que deseja excluir esta permissão?')) {
-    try {
-      await permissoesService.excluir(item.id)
-      showNotification({
-        type: 'success',
-        message: 'Permissão excluída com sucesso!'
-      })
-      await loadPermissoes()
-    } catch (error) {
-      console.error('Erro ao excluir permissão:', error)
-      showNotification({
-        type: 'error',
-        message: 'Erro ao excluir permissão. Tente novamente mais tarde.'
-      })
-    }
-  }
-}
-
-// Set up watchers and mounted hook
-watch([currentPage, currentSort], loadPermissoes)
-onMounted(loadPermissoes)
+// Set up mounted hook
+onMounted(loadPermissoes);
 </script>
 
 <style scoped>
@@ -227,5 +173,55 @@ onMounted(loadPermissoes)
   display: flex;
   gap: 0.5rem;
   justify-content: center;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+}
+
+.card-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card-tools {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.form-row .col {
+  flex: 1;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.permissao-details {
+  display: grid;
+  gap: 1rem;
+  padding: 0.5rem;
+}
+
+.permissao-details strong {
+  font-weight: 600;
+  color: var(--text-secondary, #666);
+  margin-right: 0.5rem;
 }
 </style>
